@@ -1,0 +1,72 @@
+version: 2.1
+orbs:
+  node: circleci/node@5.0.2
+
+jobs:
+  deploy:
+    executor: node/default
+    resource_class: medium
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: yarn
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+      - run:
+          name: linting
+          command: pnpm lint
+      - run:
+          name: build api
+          command: |
+            cp .env.prod .env
+            pnpm build:nest
+      - run:
+          name: build webapp
+          command: |
+            cp .env.prod .env
+            pnpm build:next
+      - run:
+          name: archive artifact zip
+          command: |
+            ls -l
+            rm -rf node_modules
+            mkdir temp
+            cp package.json ./temp/package.json
+            cp next.config.js ./temp/next.config.js
+            cp -r dist-server ./temp/dist-server
+            cp -r .next ./temp/.next
+            cp -r public ./temp/public
+            cp -r prisma ./temp/prisma
+            cp .env.prod ./temp/.env
+            zip -r build.zip ./temp
+      - add_ssh_keys:
+          fingerprints:
+            - '3a:a8:47:b5:73:5a:e7:87:68:18:e3:b9:73:21:5a:71'
+      - run:
+          name: cleanup server
+          command: |
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/build.zip'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/package.json && rm -rf /home/simpuskapa/deploy/temp/next.config.js'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/pnpm-lock.yaml'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/dist-server'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/.next'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/node_modules'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/public'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/prisma'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'rm -rf /home/simpuskapa/deploy/temp/.env'
+      - run:
+          name: transfer build
+          command: |
+            echo 'put build.zip' | sftp -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176:deploy 
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'unzip /home/simpuskapa/deploy/build.zip -d /home/simpuskapa/deploy/'
+      - run:
+          name: setup
+          command: |
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'cd deploy/temp && pnpm install && npx prisma generate'
+            ssh -o "StrictHostKeyChecking no" -o ServerAliveInterval=10 simpuskapa@103.150.190.176 'sudo systemctl restart backend && sudo systemctl restart frontend'
+workflows:
+  deploy_dev:
+    jobs:
+      - deploy

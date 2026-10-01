@@ -1,0 +1,2201 @@
+import { BadRequestException, Injectable, Version } from '@nestjs/common'
+import { payment_request, requisition_form } from '@prisma/client'
+
+import { ServerBadRequest, ServerNotFound } from '@/shared/server.errors'
+import { BudgetRepository } from '../repositories/budget.repository'
+import { EmployeeRepository } from '../repositories/employee.repository'
+import { ProgramRepository } from '../repositories/program.repository'
+import { RfRepository } from '../repositories/rf.repository'
+import { VendorRepository } from '../repositories/vendor.repository'
+
+import { RoleDefinition } from '@/shared/role.access'
+import { APSApprovalBy, PRApprovalBy, PRApprovalStatus, PRFinanceCheckingStatus, PRTypes } from '../../shared/pr.type'
+import { TaxCalculation } from '../internals/tax/tax.calculation'
+import { GeneralRepository } from '../repositories/general.repository'
+import { NotificationRepository } from '../repositories/notification.repository'
+import { PRRepository } from '../repositories/pr.repository'
+import { UserRepository } from '../repositories/user.repository'
+import { NotifType } from '../types/notification.dto'
+import {
+  CalculationTaxParam,
+  CalculationTaxResult,
+  CreatePaymentRequestApiRequest,
+  EmployeeProfile,
+  FinanceProcessBankAccount,
+  PaymentReport,
+  PaymentRequestDetail,
+  PaymentRequestSimple,
+  PRAttachment,
+  PRTaxes,
+  SetFinanceCheckerProcessBulk,
+  UpdateAPSforAPRApiRequest,
+} from '../types/pr.dto'
+import {
+  ActivityBudgetList,
+  BudgetActivity,
+  BudgetProgramProjectActivity,
+  BudgetProgramProjectDetail,
+} from '../types/program.dto'
+import { TaxNationality, TaxParam } from '../types/tax.dto'
+import { rejects } from 'assert'
+import { VendorPayment } from '../types/vendor.dto'
+import { argv0 } from 'process'
+
+@Injectable()
+export class PRServiceService {
+  constructor(
+    private prRepository: PRRepository,
+    private emplyeeRepository: EmployeeRepository,
+    private programRepository: ProgramRepository,
+    private budgetRepository: BudgetRepository,
+    private vendorRepository: VendorRepository,
+    private rfRepository: RfRepository,
+    private generalRepo: GeneralRepository,
+    private userRepository: UserRepository,
+    private notifRepo: NotificationRepository,
+  ) {}
+
+  syncAPRToPR(budgets: ActivityBudgetList[], apr: any): ActivityBudgetList[] {
+    const aprBudgets: ActivityBudgetList[] = apr.pr_budgets as ActivityBudgetList[]
+
+    for (const budget of budgets) {
+      const aprMatched = aprBudgets.filter((aprBudget) => {
+        return budget.id == aprBudget.id
+      })
+
+      if (aprMatched.length > 0) {
+        budget.advance_payment_total = aprMatched[0].advance_payment_total
+      }
+    }
+
+    return budgets
+  }
+
+  async recalculateTax(pr_id: string): Promise<string> {
+    const pr = await this.prRepository.getPRById(pr_id)
+
+    const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+
+    const program = await this.programRepository.getById(rf.program_id)
+
+    if (pr.vendor_id) {
+      const vendor = await this.vendorRepository.getVendorById(pr.vendor_id)
+      if (vendor) {
+        const aboutVEndorEval = {
+          Individual: false,
+          Group: true,
+          individual: false,
+          group: true,
+          'Warga Negara Indonesia': TaxNationality.WNI,
+          'Warga Negara Asing': TaxNationality.WNA,
+          warga_negara_indonesia: TaxNationality.WNI,
+          warga_negara_asing: TaxNationality.WNA,
+        }
+        let taxCalculationResult: CalculationTaxResult
+        try {
+          const tax = new TaxCalculation({
+            with_npwp: true,
+            with_ppn: pr.with_ppn,
+            nationality:
+              aboutVEndorEval[
+                vendor.vendor_information['nationality'] == undefined
+                  ? 'Warga Negara Indonesia'
+                  : vendor.vendor_information['nationality']
+              ],
+            is_organization:
+              aboutVEndorEval[
+                vendor.vendor_information['organization_type'] == undefined
+                  ? 'Individual'
+                  : vendor.vendor_information['organization_type']
+              ],
+          } as TaxParam)
+          console.log(tax)
+
+          const prHistories = []
+
+          const prs = await this.prRepository.getListPRAll(program.id, pr.rf_id, null, false, null, vendor.id)
+          for (const pr of prs) {
+            const detail = await this.getPrDetail(pr.id)
+            prHistories.push(detail)
+          }
+
+          const vendorType = await this.vendorRepository.getVendorTypeById(vendor.vendor_type)
+          if (!vendorType) {
+            throw new ServerBadRequest('Vendor type not found')
+          }
+          console.log('CALCULATION TYPE', vendorType)
+          if (vendorType.tax_calculation_type == 'CALCULATE') {
+            const currentPr = await this.getPrDetail(pr_id)
+            prHistories.push(currentPr)
+            taxCalculationResult = tax.setPaymentRequesstHistory(prHistories).calculate(currentPr)
+          } else if (vendorType.tax_calculation_type == 'SKIP') {
+            taxCalculationResult = {
+              calculation_params: {} as CalculationTaxParam,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          } else if (vendorType.tax_calculation_type == 'MANUAL') {
+            taxCalculationResult = {
+              calculation_params: {} as CalculationTaxParam,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          }
+
+          await this.prRepository.updateById(pr_id, {
+            tax: JSON.stringify(taxCalculationResult),
+          })
+
+          return JSON.stringify(taxCalculationResult)
+        } catch (e) {
+          console.log(e)
+          console.log(pr)
+          throw new ServerBadRequest(`Tax calculation failed ${JSON.stringify(taxCalculationResult)} - ${e}`)
+        }
+      } else {
+        throw new ServerBadRequest('Tax calculation failed - vendor information not found')
+      }
+    } else {
+      // without tax cslculation
+
+      return 'IS NOT TAX'
+    }
+  }
+
+  async deletePR(id: string): Promise<string> {
+    await this.prRepository.deleteById(id)
+
+    await this.notifRepo.deleteNotifByRefIdOnly(id)
+
+    return ''
+  }
+
+  async updateAprAps(id: string, data: UpdateAPSforAPRApiRequest): Promise<string> {
+    await this.prRepository.updateById(id, {
+      attachments: JSON.stringify(data.attachments),
+      vendor_id: data.vendor_id,
+      with_ppn: data.with_ppn,
+      pr_budgets: JSON.stringify(data.budgets),
+      aps_result: data.aps_result,
+    })
+
+    return ''
+  }
+
+  async createPaymentRequest(pr: CreatePaymentRequestApiRequest, userId: string): Promise<string> {
+    console.log('USER', userId)
+    const submittedByEmployee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    if (submittedByEmployee.length <= 0) {
+      throw new ServerNotFound('submited employee by not found')
+    }
+
+    const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    if (program.program_ownership_type === 'INTERNAL') {
+      const internalGeneralManagerUser = await this.userRepository.getUserByRole(RoleDefinition.GENERAL_MANAGER)
+
+      if (!internalGeneralManagerUser) {
+        throw new ServerBadRequest('General Manager has not been set')
+      }
+
+      const internalGeneralManagerEmployees = await this.emplyeeRepository.getEmployeeByUserId(
+        internalGeneralManagerUser.id,
+      )
+
+      if (!internalGeneralManagerEmployees.length) {
+        throw new ServerBadRequest('General Manager employee not found')
+      }
+
+      /*
+       * Existing first approval uses program.program_manager.
+       * For INTERNAL, replace the runtime approver with the
+       * current role-based General Manager.
+       */
+      ;(program as any).program_manager = internalGeneralManagerEmployees[0].id
+    }
+
+    // get current HOF and HOO
+    const hofUser = await this.userRepository.getUserByRole(RoleDefinition.HEAD_OF_FINANCE)
+    if (!hofUser) {
+      throw new ServerBadRequest('Head Of Finance has not been set')
+    }
+    const hof = await this.emplyeeRepository.getEmployeeByUserId(hofUser.id)
+
+    const hooUser = await this.userRepository.getUserByRole(RoleDefinition.HEAD_OF_OPERATION)
+    if (!hooUser) {
+      throw new ServerBadRequest('Head Of Operation has not been set')
+    }
+    const hoo = await this.emplyeeRepository.getEmployeeByUserId(hooUser.id)
+
+    for (const budget of pr.budgets as any) {
+      if (budget.is_dynamic != undefined) {
+        if (budget.activity_id == undefined) {
+          continue
+        }
+        await this.budgetRepository.add({
+          id: budget.id,
+          activity_id: budget.activity_id,
+          ordering_seq: budget.ordering_seq,
+          code: budget.code,
+          description: budget.description,
+          vendor_category_info_id: budget.vendor_category_id,
+          qty: budget.qty,
+          unit: budget.unit,
+          pkg_qty: budget.pkg_qty,
+          pkg_unit: budget.pkg_unit,
+          cost: budget.unit_cost_value,
+        })
+
+        const budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+        if (!budgetDetail) {
+          continue
+        }
+      }
+    }
+
+    //if in this RF has APR get budget apr and match with budget id
+    const apr = await this.prRepository.getListPrByTypeAndRfID(rf.id, pr.payment_type)
+    if (apr.length > 0 && pr.payment_type == PRTypes.PR) {
+      this.syncAPRToPR(pr.budgets, apr)
+    }
+
+    //await this.generalRepo.createLog({
+    //  pr_id: '',
+    //  rf_id: rfId,
+    //  user_id: submittedByEmployee[0].user_id,
+    //  log_type: 'RequisitionForm',
+    //  raw_data: '',
+    //  program_id: programId,
+    //  message: `Re-submitted a new <a href="/dashboard/procurement/${program.id}/detail/${projectId}/${rfd.id}">"${rfd.about_request}"</a> from ${program.program_name} project`,
+    //})
+
+    if (pr.vendor_id) {
+      const vendor = await this.vendorRepository.getVendorById(pr.vendor_id)
+      if (vendor) {
+        const aboutVEndorEval = {
+          Individual: false,
+          Group: true,
+          'Warga Negara Indonesia': TaxNationality.WNI,
+          'Warga Negara Asing': TaxNationality.WNA,
+        }
+        let taxCalculationResult: CalculationTaxResult
+        try {
+          const tax = new TaxCalculation({
+            with_npwp: true,
+            with_ppn: pr.with_ppn,
+            nationality:
+              aboutVEndorEval[
+                vendor.vendor_information['nationality'] == undefined
+                  ? 'Warga Negara Indonesia'
+                  : vendor.vendor_information['nationality']
+              ],
+            is_organization:
+              aboutVEndorEval[
+                vendor.vendor_information['organization_type'] == undefined
+                  ? 'Individual'
+                  : vendor.vendor_information['organization_type']
+              ],
+          } as TaxParam)
+
+          const prHistories = []
+
+          const prs = await this.prRepository.getListPRAll(program.id, pr.rf_id, null, false, null, vendor.id)
+          for (const pr of prs) {
+            const detail = await this.getPrDetail(pr.id)
+            prHistories.push(detail)
+          }
+
+          if (pr.budgets) {
+            for (const budget of pr.budgets) {
+              const chekedBudget = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+
+              if (!chekedBudget) {
+                throw new BadRequestException('Budget Not Found')
+              }
+            }
+          }
+
+          const inserted = await this.prRepository.create(
+            {
+              rf_id: pr.rf_id,
+              description: pr.description,
+              vendor_id: pr.vendor_id,
+              with_ppn: pr.with_ppn,
+              pr_budgets: JSON.stringify(pr.budgets),
+              attachments: JSON.stringify(pr.attachments),
+              expected_payment_date: pr.expected_payment_date,
+              requested_at: new Date().toISOString(),
+              requested_by: submittedByEmployee[0].id,
+              head_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+              budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+              program_manager_approval: PRApprovalStatus.PENDING.toString(),
+              aps_budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+              aps_haed_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+              request_number: 'xxx',
+              request_number_seq: 0,
+              payment_type: pr.payment_type,
+              aps_result: pr.aps_result,
+              aps_related_apr_id: pr.aps_related_pr_id,
+              travel_end_date_estimation: pr.travel_end_date_estimation,
+              spending_deadline: pr.spending_deadline,
+              head_of_finance_approval_by: hof[0].id,
+            },
+            program.partner_code,
+          )
+
+          await this.generalRepo.createLog({
+            pr_id: inserted.id,
+            rf_id: rf.id,
+            user_id: submittedByEmployee[0].user_id,
+            log_type: 'PaymentRequest',
+            raw_data: '',
+            program_id: program.id,
+            message: `Submitted a new ${
+              {
+                'payment-request': 'Payment Request',
+                'advance-payment-request': 'Advance Payment Request',
+                'travel-expense': 'Travel Expense',
+                'advance-perdiem': 'Advance Perdiem',
+                'advance-payment-statement': 'Advance Payment Statement',
+              }[pr.payment_type]
+            } <a href="/dashboard/finance/payment-request/${inserted.id}">"${pr.description}"<a> from ${
+              program.program_name
+            } project`,
+          })
+
+          const vendorType = await this.vendorRepository.getVendorTypeById(vendor.vendor_type)
+          if (!vendorType) {
+            throw new ServerBadRequest('Vendor type not found')
+          }
+
+          if (vendorType.tax_calculation_type == 'CALCULATE') {
+            const currentPr = await this.getPrDetail(inserted.id)
+            prHistories.push(currentPr)
+            taxCalculationResult = tax.setPaymentRequesstHistory(prHistories).calculate(currentPr)
+          } else if (vendorType.tax_calculation_type == 'SKIP') {
+            taxCalculationResult = {
+              calculation_params: null,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          } else if (vendorType.tax_calculation_type == 'MANUAL') {
+            taxCalculationResult = {
+              calculation_params: null,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          }
+
+          await this.prRepository.updateById(inserted.id, {
+            tax: JSON.stringify(taxCalculationResult),
+          })
+
+          const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+          for (const finance_team of finance_team_members) {
+            await this.notifRepo.create({
+              employee_id: finance_team.id,
+              ref_id: inserted.id,
+              notif_type: NotifType.ACTION_PAYMENT_REQUEST_CHECK,
+              deleted_at: null,
+            })
+          }
+
+          await this.notifRepo.resolveNotif(inserted.requested_by, inserted.rf_id, NotifType.ACTION_REQUISITION_FORM)
+          await this.notifRepo.create({
+            employee_id: inserted.requested_by,
+            ref_id: inserted.id,
+            notif_type: NotifType.TRACKING_PAYMENT_REQUEST,
+            deleted_at: null,
+          })
+
+          return inserted.id
+        } catch (e) {
+          console.log(e)
+          console.log(pr)
+          throw new ServerBadRequest('Tax calculation failed')
+        }
+      } else {
+        throw new ServerBadRequest('Tax calculation failed - vendor information not found')
+      }
+    } else {
+      // without tax cslculation
+      if (pr.budgets) {
+        for (const budget of pr.budgets) {
+          const chekedBudget = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+
+          if (!chekedBudget) {
+            throw new BadRequestException('Budget Not Found')
+          }
+        }
+      }
+      const inserted = await this.prRepository.create(
+        {
+          rf_id: pr.rf_id,
+          description: pr.description,
+          with_ppn: pr.with_ppn,
+          pr_budgets: JSON.stringify(pr.budgets),
+          attachments: JSON.stringify(pr.attachments),
+          expected_payment_date: pr.expected_payment_date,
+          requested_at: new Date().toISOString(),
+          requested_by: submittedByEmployee[0].id,
+          head_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+          budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+          program_manager_approval: PRApprovalStatus.PENDING.toString(),
+          aps_budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+          aps_haed_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+          request_number: 'xxx',
+          request_number_seq: 0,
+          payment_type: pr.payment_type,
+          aps_result: pr.aps_result,
+          aps_related_apr_id: pr.aps_related_pr_id,
+          travel_end_date_estimation: pr.travel_end_date_estimation,
+          spending_deadline: pr.spending_deadline,
+          head_of_finance_approval_by: hof[0].id,
+        },
+        program.partner_code,
+      )
+
+      await this.generalRepo.createLog({
+        pr_id: inserted.id,
+        rf_id: rf.id,
+        user_id: submittedByEmployee[0].user_id,
+        log_type: 'PaymentRequest',
+        raw_data: '',
+        program_id: program.id,
+        message: `Submitted a new ${
+          {
+            'payment-request': 'Payment Request',
+            'advance-payment-request': 'Advance Payment Request',
+            'travel-expense': 'Travel Expense',
+            'advance-perdiem': 'Advance Perdiem',
+            'advance-payment-statement': 'Advance Payment Statement',
+          }[pr.payment_type]
+        } <a href="/dashboard/finance/payment-request/${inserted.id}">"${pr.description}"<a> from ${
+          program.program_name
+        } project`,
+      })
+
+      const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+      for (const finance_team of finance_team_members) {
+        await this.notifRepo.create({
+          employee_id: finance_team.id,
+          ref_id: inserted.id,
+          notif_type: NotifType.ACTION_PAYMENT_REQUEST_CHECK,
+          deleted_at: null,
+        })
+      }
+      await this.notifRepo.create({
+        employee_id: inserted.requested_by,
+        ref_id: inserted.id,
+        notif_type: NotifType.TRACKING_PAYMENT_REQUEST,
+        deleted_at: null,
+      })
+      await this.notifRepo.resolveNotif(inserted.requested_by, inserted.rf_id, NotifType.ACTION_REQUISITION_FORM)
+
+      return inserted.id
+    }
+  }
+
+  async createPaymentReport(id: string, paymentDate: Date | string, docs: string[], userId: string): Promise<string> {
+    await this.prRepository.updateById(id, {
+      report_documents: JSON.stringify(docs),
+      payment_date: paymentDate,
+    })
+
+    return ''
+  }
+
+  async getPaymentReport(id: string): Promise<PaymentReport> {
+    const report = new PaymentReport()
+
+    const res = await this.prRepository.getPRById(id)
+
+    report.payment_date = res.payment_date
+    report.report_documents = res.report_documents
+
+    return report
+  }
+
+  async getPrLists(
+    programId?: string,
+    rfId?: string,
+    prType?: string,
+    finance_checker_rejected_by?: string,
+    vendor_id?: string,
+    pr_status = '',
+  ): Promise<PaymentRequestSimple[]> {
+    const result = []
+
+    const prs = await this.prRepository.getListPRAll(
+      programId,
+      rfId,
+      prType,
+      null,
+      null,
+      vendor_id,
+      finance_checker_rejected_by,
+      pr_status,
+    )
+
+    for (const pr of prs) {
+      const prx = new PaymentRequestSimple()
+      prx.id = pr.id
+      prx.description = pr.description
+      prx.pr_number = pr.request_number
+      prx.head_of_finance_approval = pr.head_of_finance_approval
+      prx.created_at = pr.created_at?.toISOString()
+
+      prx.program_manager_approval = pr.program_manager_approval
+      prx.budget_controller_approval = pr.budget_controller_approval
+      prx.finance_checking_process_status = pr.finance_checking_process_status
+
+      const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+
+      const program = await this.programRepository.getById(rf.program_id)
+      prx.program_name = program.program_name
+      prx.rf_number = rf.request_number
+      prx.paid_at = pr.paid_at?.toISOString()
+
+      prx.payment_type = rf.payment_type
+
+      prx.expected_payment_date = pr.expected_payment_date
+
+      if (pr.requested_by) {
+        const employee = await this.emplyeeRepository.getEmployeeById(pr.requested_by)
+        prx.requested_by = {
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      } else {
+        prx.requested_by = null
+      }
+
+      if (pr.processed_by) {
+        const employee = await this.emplyeeRepository.getEmployeeById(pr.processed_by)
+        prx.processed_by = {
+          id: employee.id,
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      } else {
+        prx.processed_by = null
+      }
+
+      if (pr.finance_checking_process_by) {
+        const employee = await this.emplyeeRepository.getEmployeeById(pr.finance_checking_process_by)
+        prx.finance_checking_process_by = {
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      } else {
+        prx.finance_checking_process_by = null
+      }
+
+      if (pr.budget_controller_approval_by) {
+        const employee = await this.emplyeeRepository.getEmployeeById(pr.budget_controller_approval_by)
+        prx.budget_controller_approval_by = {
+          id: employee.id,
+
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      } else {
+        const employee = await this.emplyeeRepository.getEmployeeById(program.budget_controller)
+
+        //prx.budget_controller_approval_by = {
+        //  id: employee.id,
+
+        //  name: employee.full_name,
+        //  employee_pass_photo: employee.pass_photo_path,
+        //} as EmployeeProfile
+      }
+      if (pr.program_manager_approval_by) {
+        const employee = await this.emplyeeRepository.getEmployeeById(pr.program_manager_approval_by)
+        prx.program_manager_approval_by = {
+          id: employee.id,
+
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      } else {
+        const employee = await this.emplyeeRepository.getEmployeeById(program.program_manager)
+
+        prx.program_manager_approval_by = {
+          id: employee.id,
+
+          name: employee.full_name,
+          employee_pass_photo: employee.pass_photo_path,
+        } as EmployeeProfile
+      }
+
+      let totalPaymentRequest = 0
+
+      if (pr.pr_budgets) {
+        if (pr.payment_type == 'payment-request') {
+          for (const budget of JSON.parse(pr.pr_budgets as string)) {
+            totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+            if ('tax_amount' in budget) {
+              totalPaymentRequest -= budget.tax_amount
+            }
+          }
+        }
+
+        if (pr.payment_type == 'advance-perdiem-fee') {
+          for (const budget of JSON.parse(pr.pr_budgets as string)) {
+            const traveExpense = await this.prRepository.getListTEByRFID(rf.id)
+            console.log('FIND IF RF HAS TE', rf.id, rf.about_request, traveExpense)
+            totalPaymentRequest += budget.advance_payment_total
+            if (traveExpense.length == 0) {
+              totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+            }
+          }
+        }
+        if (pr.payment_type == 'travel-expense') {
+          console.log('travel expense calc====')
+          for (const budget of JSON.parse(pr.pr_budgets as string)) {
+            if ('total_expenses_real' in budget.additional_data) {
+              console.log(budget.description, budget.additional_data.total_expenses_real)
+              console.log('===========')
+              totalPaymentRequest += budget.additional_data.total_expenses_real
+            } else if ('static_data' in budget.additional_data) {
+              let apf = 0
+              if ('apf' in budget.additional_data) {
+                apf = budget.additional_data.apf
+              }
+
+              let total_expense = budget.total_expenses
+              for (const perdiem of budget.additional_data.static_data) {
+                total_expense += perdiem.total
+              }
+
+              // TAX
+
+              const travellerPerdiemTax = budget.additional_data.traveller_perdiem_tax
+              const taxBenchmark = budget.additional_data['tax_benchmark']
+              const perdiemTax =
+                Math.abs(budget.additional_data['static_data']['3']['tax']) === Math.abs(taxBenchmark)
+                  ? budget.qty *
+                    budget.unit_cost_value *
+                    (budget.pkg_qty - budget.additional_data['static_data']['3']['pkg_qty']) *
+                    (travellerPerdiemTax / 100)
+                  : budget.qty * budget.unit_cost_value * budget.pkg_qty * (travellerPerdiemTax / 100)
+
+              console.log('travel tax ===>', budget.description)
+              console.log('TOTAL_EXPENSE', total_expense)
+              console.log('APF TOTAL', apf)
+              console.log('PERDIEM TAX', perdiemTax)
+              console.log('CALCULATION', total_expense, apf, perdiemTax, total_expense - apf - perdiemTax)
+              totalPaymentRequest += total_expense - apf - perdiemTax
+
+              console.log(budget.description, apf, total_expense)
+              console.log('===========')
+            } else {
+              totalPaymentRequest += budget.total_expenses
+            }
+            if ('tax_amount' in budget) {
+              console.log('TAX', budget.tax_amount)
+              console.log('===========')
+              totalPaymentRequest -= budget.tax_amount
+            }
+          }
+        }
+        if (pr.payment_type == 'advance-payment-request') {
+          for (const budget of JSON.parse(pr.pr_budgets as string)) {
+            totalPaymentRequest += budget.advance_payment_total
+          }
+        }
+        if (pr.payment_type == 'advance-payment-statement') {
+          for (const budget of JSON.parse(pr.pr_budgets as string)) {
+            const total = Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+            console.log('APS DECCCC', budget.advance_payment_total, total)
+            totalPaymentRequest += total - budget.advance_payment_total
+          }
+        }
+      }
+
+      // TAX CALCULATE
+
+      prx.transfer_amount_value = totalPaymentRequest
+      prx.transfer_amount = `${program.currency}_${String(totalPaymentRequest)}`
+
+      prx.program_manager_approval = pr.program_manager_approval
+      result.push(prx)
+    }
+
+    return result
+  }
+
+  async getPrOneLikeLists(prId?: string): Promise<PaymentRequestSimple> {
+    const pr = await this.prRepository.getPRById(prId)
+    if (!pr) {
+      return null
+    }
+
+    const prx = new PaymentRequestSimple()
+    prx.id = pr.id
+    prx.pr_number = pr.request_number
+    prx.head_of_finance_approval = pr.head_of_finance_approval
+    prx.budget_controller_approval = pr.budget_controller_approval
+    prx.about_request = pr.description
+    prx.description = pr.description
+
+    const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+
+    const program = await this.programRepository.getById(rf.program_id)
+    prx.program_name = program.program_name
+    prx.rf_number = rf.request_number
+    prx.paid_at = pr.paid_at?.toISOString()
+
+    prx.payment_type = rf.payment_type
+
+    if (pr.requested_by) {
+      const employee = await this.emplyeeRepository.getEmployeeById(pr.requested_by)
+      prx.requested_by = {
+        name: employee.full_name,
+        employee_pass_photo: employee.pass_photo_path,
+      } as EmployeeProfile
+    } else {
+      prx.requested_by = null
+    }
+
+    if (pr.processed_by) {
+      const employee = await this.emplyeeRepository.getEmployeeById(pr.processed_by)
+      prx.processed_by = {
+        id: employee.id,
+        name: employee.full_name,
+        employee_pass_photo: employee.pass_photo_path,
+      } as EmployeeProfile
+    } else {
+      prx.processed_by = null
+    }
+
+    if (pr.budget_controller_approval_by) {
+      const employee = await this.emplyeeRepository.getEmployeeById(pr.budget_controller_approval_by)
+      prx.budget_controller_approval_by = {
+        id: employee.id,
+
+        name: employee.full_name,
+        employee_pass_photo: employee.pass_photo_path,
+      } as EmployeeProfile
+    } else {
+      const employee = await this.emplyeeRepository.getEmployeeById(program.budget_controller)
+
+      //prx.budget_controller_approval_by = {
+      //  id: employee.id,
+
+      //  name: employee.full_name,
+      //  employee_pass_photo: employee.pass_photo_path,
+      //} as EmployeeProfile
+    }
+    if (pr.program_manager_approval_by) {
+      const employee = await this.emplyeeRepository.getEmployeeById(pr.program_manager_approval_by)
+      prx.program_manager_approval_by = {
+        id: employee.id,
+
+        name: employee.full_name,
+        employee_pass_photo: employee.pass_photo_path,
+      } as EmployeeProfile
+    } else {
+      const employee = await this.emplyeeRepository.getEmployeeById(program.program_manager)
+
+      prx.program_manager_approval_by = {
+        id: employee.id,
+
+        name: employee.full_name,
+        employee_pass_photo: employee.pass_photo_path,
+      } as EmployeeProfile
+    }
+
+    let totalPaymentRequest = 0
+    if (pr.pr_budgets) {
+      if (pr.payment_type == 'payment-request') {
+        for (const budget of JSON.parse(pr.pr_budgets as string)) {
+          totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+          if ('tax_amount' in budget) {
+            totalPaymentRequest -= budget.tax_amount
+          }
+        }
+      }
+
+      if (pr.payment_type == 'advance-perdiem-fee') {
+        for (const budget of JSON.parse(pr.pr_budgets as string)) {
+          const traveExpense = await this.prRepository.getListTEByRFID(rf.id)
+          console.log('FIND IF RF HAS TE', rf.id, rf.about_request, traveExpense)
+          totalPaymentRequest += budget.advance_payment_total
+          if (traveExpense.length == 0) {
+            totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+          }
+        }
+      }
+      if (pr.payment_type == 'travel-expense') {
+        console.log('travel expense calc====')
+        for (const budget of JSON.parse(pr.pr_budgets as string)) {
+          if ('total_expenses_real' in budget.additional_data) {
+            console.log(budget.description, budget.additional_data.total_expenses_real)
+            console.log('===========')
+            totalPaymentRequest += budget.additional_data.total_expenses_real
+          } else if ('static_data' in budget.additional_data) {
+            let apf = 0
+            if ('apf' in budget.additional_data) {
+              apf = budget.additional_data.apf
+            }
+
+            let total_expense = budget.total_expenses
+            for (const perdiem of budget.additional_data.static_data) {
+              total_expense += perdiem.total
+            }
+
+            // TAX
+
+            const travellerPerdiemTax = budget.additional_data.traveller_perdiem_tax
+            const taxBenchmark = budget.additional_data['tax_benchmark']
+            const perdiemTax =
+              Math.abs(budget.additional_data['static_data']['3']['tax']) === Math.abs(taxBenchmark)
+                ? budget.qty *
+                  budget.unit_cost_value *
+                  (budget.pkg_qty - budget.additional_data['static_data']['3']['pkg_qty']) *
+                  (travellerPerdiemTax / 100)
+                : budget.qty * budget.unit_cost_value * budget.pkg_qty * (travellerPerdiemTax / 100)
+
+            console.log('travel tax ===>', budget.description)
+            console.log('TOTAL_EXPENSE', total_expense)
+            console.log('APF TOTAL', apf)
+            console.log('PERDIEM TAX', perdiemTax)
+            console.log('CALCULATION', total_expense, apf, perdiemTax, total_expense - apf - perdiemTax)
+            totalPaymentRequest += total_expense - apf - perdiemTax
+
+            console.log(budget.description, apf, total_expense)
+            console.log('===========')
+          } else {
+            totalPaymentRequest += budget.total_expenses
+          }
+          if ('tax_amount' in budget) {
+            console.log('TAX', budget.tax_amount)
+            console.log('===========')
+            totalPaymentRequest -= budget.tax_amount
+          }
+        }
+      }
+      if (pr.payment_type == 'advance-payment-request') {
+        for (const budget of JSON.parse(pr.pr_budgets as string)) {
+          totalPaymentRequest += budget.advance_payment_total
+        }
+      }
+      if (pr.payment_type == 'advance-payment-statement') {
+        for (const budget of JSON.parse(pr.pr_budgets as string)) {
+          const total = Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+          console.log('APS DECCCC', budget.advance_payment_total, total)
+          totalPaymentRequest += total - budget.advance_payment_total
+        }
+      }
+    }
+
+    prx.transfer_amount_value = totalPaymentRequest
+    prx.transfer_amount = `${program.currency}_${String(totalPaymentRequest)}`
+
+    prx.program_manager_approval = pr.program_manager_approval
+
+    return prx
+  }
+
+  async getListOfBankAccountToTransferByEmployeeId(user_id: string): Promise<FinanceProcessBankAccount[]> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    const transfers: FinanceProcessBankAccount[] = []
+    const prs: payment_request[] = await this.prRepository.getPRByFInanceProcessBy(employee[0].id)
+
+    if (!prs) {
+      return []
+    }
+    if (prs.length == 0) {
+      return []
+    }
+    console.log('trasfer list', prs)
+    for (const pr of prs) {
+      if (!pr.vendor_id) {
+        continue
+      }
+
+      const rf = await this.rfRepository.getRfById('', '', pr.rf_id)
+      if (!rf) {
+        continue
+      }
+      const program = await this.programRepository.getById(rf.program_id)
+      if (!program) {
+        continue
+      }
+
+      const prDetail = await this.getPrDetail(pr.id, '')
+
+      const vendor = await this.vendorRepository.getVendorById(pr.vendor_id)
+      if (vendor.vendor_payment) {
+        transfers.push({
+          pr_number: pr.request_number,
+          pr_description: pr.description,
+          transfer_deadline: pr.payment_date ? pr.payment_date.toString() : '-',
+          transfer_to: vendor.vendor_payment as VendorPayment,
+          project_name: program.program_name,
+          amount: prDetail.transfer_amount,
+        } as FinanceProcessBankAccount)
+      }
+    }
+
+    return transfers
+  }
+
+  async bulkMarkPrProcess(prs: SetFinanceCheckerProcessBulk[]): Promise<any> {
+    for (const req of prs) {
+      const user = await this.emplyeeRepository.getEmployeeByIdSimple(req.employee_id)
+      const pr_detail = await this.prRepository.getPRById(req.pr_id)
+
+      if (pr_detail.payment_type == 'advance-payment-statement') {
+        await this.apsMarkProcessed(pr_detail.id, user.user_id)
+      } else {
+        await this.prMarkProcessed(pr_detail.id, user.user_id)
+      }
+    }
+  }
+
+  async prMarkProcessed(pr_id: string, user_id: string): Promise<any> {
+    console.log('EMPLOYEE ID', user_id)
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.markPaymentRequestProcessed(pr_id, employee[0].id)
+
+    await this.notifRepo.resolveNotif(employee[0].id, pr_id, NotifType.ACTION_PAYMENT_REQUEST_PAY)
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+    const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    await this.generalRepo.createLog({
+      pr_id: pr_id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Marked to Processing Payment for the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project `,
+    })
+
+    return null
+  }
+
+  async prMarkUnProcessed(pr_id: string, user_id: string): Promise<any> {
+    await this.prRepository.markPaymentRequestProcessed(pr_id, null)
+
+    const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+    for (const finance_team of finance_team_members) {
+      await this.notifRepo.create({
+        employee_id: finance_team.id,
+        ref_id: pr_id,
+        notif_type: NotifType.ACTION_PAYMENT_REQUEST_PAY,
+        deleted_at: null,
+      })
+    }
+
+    return null
+  }
+
+  async prMarkPaid(pr_id: string, user_id: string): Promise<any> {
+    await this.prRepository.markPaymentPaid(pr_id, null)
+
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+    const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    await this.generalRepo.createLog({
+      pr_id: pr_id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Finnished the Payment for the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-perdiem-fee': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project `,
+    })
+
+    return null
+  }
+
+  async apsMarkProcessed(pr_id: string, user_id: string): Promise<any> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.markPaymentStatementProcessed(pr_id, employee[0].id)
+
+    return null
+  }
+
+  async aspMarkUnProcessed(pr_id: string, user_id: string): Promise<any> {
+    await this.prRepository.markPaymentStatementProcessed(pr_id, null)
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+
+    const pr = await this.prRepository.getPRById(pr_id)
+
+    return null
+  }
+
+  async apsApproval(approvalType: string, approval: string, userId: string, id: string): Promise<any> {
+    const submittedByEmployee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    if (submittedByEmployee.length <= 0) {
+      throw new ServerNotFound('submited employee by not found')
+    }
+
+    if (approvalType == APSApprovalBy.HOF) {
+      await this.prRepository.updatePrHOFApproval(id, approval, submittedByEmployee[0].id)
+    } else if (approvalType == APSApprovalBy.HOO) {
+      throw new ServerBadRequest('Budget Controller approval has been disabled')
+    }
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    const pr = await this.prRepository.getPRById(id)
+
+    return ''
+  }
+
+  async prApproval(approvalType: string, approval: string, userId: string, id: string, reject_note = ''): Promise<any> {
+    const submittedByEmployee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    if (submittedByEmployee.length <= 0) {
+      throw new ServerNotFound('submited employee by not found')
+    }
+
+    if (approvalType == PRApprovalBy.HOF) {
+      await this.prRepository.updatePrHOFApproval(id, approval, submittedByEmployee[0].id)
+      const pr: payment_request = await this.prRepository.getPRById(id)
+      const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+      const program = await this.programRepository.getById(rf.program_id)
+
+      const actorUser = await this.userRepository.getUserById(userId)
+
+      const actorRoles = (actorUser?.role as string[]) || []
+
+      const internalGeneralManagerApproval =
+        program.program_ownership_type === 'INTERNAL' && actorRoles.includes(RoleDefinition.GENERAL_MANAGER)
+
+      if (internalGeneralManagerApproval) {
+        const currentGm = await this.userRepository.getUserByRole(RoleDefinition.GENERAL_MANAGER)
+
+        if (!currentGm || currentGm.id !== userId) {
+          throw new BadRequestException('Only the current General Manager can approve this internal request')
+        }
+
+        /*
+         * Preserve existing PM approval storage for compatibility,
+         * but the actual actor is the current General Manager.
+         */
+        approvalType = PRApprovalBy.PM
+        ;(program as any).program_manager = submittedByEmployee[0].id
+      }
+
+      if (approval == 'approved') {
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          message: `Approve the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as Head of Finance`,
+        })
+      }
+
+      if (approval == 'rejected') {
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          message: `Reject the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as Head of Finance with a message:`,
+          body: reject_note,
+        })
+      }
+    } else if (approvalType == PRApprovalBy.HOO) {
+      await this.prRepository.updatePrBudgetControllerApproval(id, approval, submittedByEmployee[0].id)
+    } else if (approvalType == PRApprovalBy.PM) {
+      // INTERNAL: slot `program_manager_approval` is used for General Manager,
+      // while PROGRAM/PROJECT keeps the existing Project Manager workflow.
+      const prForApproval: payment_request = await this.prRepository.getPRById(id)
+      const rfForApproval: requisition_form = await this.rfRepository.getRfByOnlyId(prForApproval.rf_id)
+      const programForApproval = await this.programRepository.getById(rfForApproval.program_id)
+
+      if (programForApproval.program_ownership_type === 'INTERNAL') {
+        const actorUser = await this.userRepository.getUserById(userId)
+        const actorRoles = (actorUser?.role as string[]) || []
+
+        if (!actorRoles.includes(RoleDefinition.GENERAL_MANAGER)) {
+          throw new BadRequestException('Only the General Manager can approve this internal request')
+        }
+
+        const currentGm = await this.userRepository.getUserByRole(RoleDefinition.GENERAL_MANAGER)
+
+        if (!currentGm || currentGm.id !== userId) {
+          throw new BadRequestException('Only the current General Manager can approve this internal request')
+        }
+      }
+
+      await this.prRepository.updateProgramManagerApproval(id, approval, submittedByEmployee[0].id)
+      const prDetail: payment_request = await this.prRepository.getPRById(id)
+
+      await this.notifRepo.resolveNotif(
+        prDetail.program_manager_approval_by,
+        prDetail.id,
+        NotifType.APPROVAL_PAYMENT_REQUEST,
+      )
+      const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+
+      for (const finance_team of finance_team_members) {
+        await this.notifRepo.create({
+          employee_id: finance_team.id,
+          ref_id: id,
+          notif_type: NotifType.ACTION_PAYMENT_REQUEST_PAY,
+          deleted_at: null,
+        })
+      }
+
+      if (approval == 'rejected') {
+        await this.prRepository.updateById(id, {
+          program_manager_approval: 'rejected',
+          finance_checking_process_status: PRFinanceCheckingStatus.REVISION,
+        })
+        const pr: payment_request = await this.prRepository.getPRById(id)
+        const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+
+        const program = await this.programRepository.getById(rf.program_id)
+
+        const actorUser = await this.userRepository.getUserById(userId)
+        const actorRoles = (actorUser?.role as string[]) || []
+        const internalGeneralManagerApproval =
+          program.program_ownership_type === 'INTERNAL' && actorRoles.includes(RoleDefinition.GENERAL_MANAGER)
+
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          body: reject_note,
+          message: `Reject the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as ${internalGeneralManagerApproval ? 'General Manager' : 'Project Manager'}`,
+        })
+      } else {
+        const pr: payment_request = await this.prRepository.getPRById(id)
+        const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+        const program = await this.programRepository.getById(rf.program_id)
+
+        const actorUser = await this.userRepository.getUserById(userId)
+        const actorRoles = (actorUser?.role as string[]) || []
+        const internalGeneralManagerApproval =
+          program.program_ownership_type === 'INTERNAL' && actorRoles.includes(RoleDefinition.GENERAL_MANAGER)
+
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          body: reject_note,
+          message: `Approved the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as ${internalGeneralManagerApproval ? 'General Manager' : 'Project Manager'}`,
+        })
+      }
+    } else if (approvalType == PRApprovalBy.BC) {
+      throw new ServerBadRequest('Budget Controller approval has been disabled')
+
+      const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+      for (const finance_team of finance_team_members) {
+        await this.notifRepo.create({
+          employee_id: finance_team.id,
+          ref_id: id,
+          notif_type: NotifType.ACTION_PAYMENT_REQUEST_PAY,
+          deleted_at: null,
+        })
+      }
+      //TODO: reset state
+      const pr: payment_request = await this.prRepository.getPRById(id)
+      const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+      const program = await this.programRepository.getById(rf.program_id)
+      if (approval == 'rejected') {
+        await this.prRepository.updateById(id, {
+          program_manager_approval: 'rejected',
+          budget_controller_approval: 'rejected',
+          finance_checking_process_status: PRFinanceCheckingStatus.REVISION,
+        })
+
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          body: reject_note,
+          message: `Reject the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as Budget Controller`,
+        })
+      }
+
+      if (approval == 'approved') {
+        await this.generalRepo.createLog({
+          pr_id: id,
+          rf_id: pr.rf_id,
+          user_id: submittedByEmployee[0].user_id,
+          log_type: 'PaymentRequest',
+          raw_data: '',
+          program_id: rf.program_id,
+          message: `Approve the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+            program.program_name
+          } project as Budget Controller`,
+        })
+      }
+    }
+
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    const pr = await this.prRepository.getPRById(id)
+
+    await this.prRepository.updateById(id, {
+      rejection_note: reject_note,
+    })
+
+    return ''
+  }
+
+  async getPrTax(id: string): Promise<any> {
+    const pr = await this.prRepository.getPRById(id)
+
+    return pr.tax ? JSON.parse(pr.tax) : null
+  }
+
+  async getPrDetail(id: string, userId?: string): Promise<PaymentRequestDetail> {
+    const pr = await this.prRepository.getPRById(id)
+
+    if (!pr) {
+      return
+    }
+
+    if (!pr.pr_budgets) {
+      return Promise.reject('Not Found')
+    }
+
+    const formatedPRs = new PaymentRequestDetail()
+
+    if (pr.aps_related_apr_id) {
+      // if has related apr
+
+      const aprDetail = await this.prRepository.getPRById(pr.aps_related_apr_id)
+      if (aprDetail) {
+        formatedPRs.ref_detail = {
+          id: aprDetail.id,
+          number: aprDetail.request_number,
+        } as PaymentRequestDetail
+      } else {
+        formatedPRs.ref_detail = null
+      }
+    }
+
+    formatedPRs.id = pr.id
+    formatedPRs.number = pr.request_number
+    formatedPRs.attachments = pr.attachments as PRAttachment[]
+    formatedPRs.report_documents = pr.report_documents as string[]
+    formatedPRs.description = pr.description
+
+    let totalPaymentRequest = 0
+
+    if (pr.payment_type == 'payment-request') {
+      for (const budget of JSON.parse(pr.pr_budgets as string)) {
+        totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+        if ('tax_amount' in budget) {
+          totalPaymentRequest -= budget.tax_amount
+        }
+      }
+    }
+
+    if (pr.payment_type == 'advance-perdiem-fee') {
+      for (const budget of JSON.parse(pr.pr_budgets as string)) {
+        const traveExpense = await this.prRepository.getListTEByRFID(pr.rf_id)
+        totalPaymentRequest += budget.advance_payment_total
+        if (traveExpense.length == 0) {
+          totalPaymentRequest += Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+        }
+      }
+    }
+    if (pr.payment_type == 'travel-expense') {
+      console.log('travel expense calc====')
+      for (const budget of JSON.parse(pr.pr_budgets as string)) {
+        if ('total_expenses_real' in budget.additional_data) {
+          console.log(budget.description, budget.additional_data.total_expenses_real)
+          console.log('===========')
+          totalPaymentRequest += budget.additional_data.total_expenses_real
+        } else if ('static_data' in budget.additional_data) {
+          let apf = 0
+          if ('apf' in budget.additional_data) {
+            apf = budget.additional_data.apf
+          }
+
+          let total_expense = budget.total_expenses
+          for (const perdiem of budget.additional_data.static_data) {
+            total_expense += perdiem.total
+          }
+
+          // TAX
+
+          const travellerPerdiemTax = budget.additional_data.traveller_perdiem_tax
+          const taxBenchmark = budget.additional_data['tax_benchmark']
+          const perdiemTax =
+            Math.abs(budget.additional_data['static_data']['3']['tax']) === Math.abs(taxBenchmark)
+              ? budget.qty *
+                budget.unit_cost_value *
+                (budget.pkg_qty - budget.additional_data['static_data']['3']['pkg_qty']) *
+                (travellerPerdiemTax / 100)
+              : budget.qty * budget.unit_cost_value * budget.pkg_qty * (travellerPerdiemTax / 100)
+
+          console.log('travel tax ===>', budget.description)
+          console.log('TOTAL_EXPENSE', total_expense)
+          console.log('APF TOTAL', apf)
+          console.log('PERDIEM TAX', perdiemTax)
+          console.log('CALCULATION', total_expense, apf, perdiemTax, total_expense - apf - perdiemTax)
+          totalPaymentRequest += total_expense - apf - perdiemTax
+
+          console.log(budget.description, apf, total_expense)
+          console.log('===========')
+        } else {
+          totalPaymentRequest += budget.total_expenses
+        }
+        if ('tax_amount' in budget) {
+          console.log('TAX', budget.tax_amount)
+          console.log('===========')
+          totalPaymentRequest -= budget.tax_amount
+        }
+      }
+    }
+    if (pr.payment_type == 'advance-payment-request') {
+      for (const budget of JSON.parse(pr.pr_budgets as string)) {
+        totalPaymentRequest += budget.advance_payment_total
+      }
+    }
+    if (pr.payment_type == 'advance-payment-statement') {
+      for (const budget of JSON.parse(pr.pr_budgets as string)) {
+        const total = Number(budget.qty) * Number(budget.pkg_qty) * Number(budget.unit_cost_value)
+        console.log('APS DECCCC', budget.advance_payment_total, total)
+        totalPaymentRequest += total - budget.advance_payment_total
+      }
+    }
+
+    formatedPRs.transfer_amount = totalPaymentRequest
+
+    formatedPRs.paid_at = pr.paid_at
+    formatedPRs.aps_result = pr.aps_result
+    formatedPRs.travel_end_date_estimation = pr.travel_end_date_estimation
+
+    if (pr.finance_checking_process_by) {
+      const employeeProcessedBy = await this.emplyeeRepository.getEmployeeById(pr.finance_checking_process_by)
+      if (employeeProcessedBy) {
+        formatedPRs.finance_checking_process_by = {
+          id: employeeProcessedBy.id,
+          name: employeeProcessedBy.full_name,
+          employee_pass_photo: employeeProcessedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.finance_checking_process_by = null
+    }
+    formatedPRs.finance_checking_process_status = pr.finance_checking_process_status
+    formatedPRs.finance_checking_process_note = pr.finance_checking_process_note
+
+    if (pr.aps_processed_by) {
+      const employeeProcessedBy = await this.emplyeeRepository.getEmployeeById(pr.aps_processed_by)
+      if (employeeProcessedBy) {
+        formatedPRs.aps_processed_by = {
+          id: employeeProcessedBy.id,
+          name: employeeProcessedBy.full_name,
+          employee_pass_photo: employeeProcessedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.aps_processed_by = null
+    }
+
+    if (pr.processed_by) {
+      const employeeProcessedBy = await this.emplyeeRepository.getEmployeeById(pr.processed_by)
+      if (employeeProcessedBy) {
+        formatedPRs.processed_by = {
+          name: employeeProcessedBy.full_name,
+          id: employeeProcessedBy.id,
+          employee_pass_photo: employeeProcessedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.processed_by = null
+    }
+
+    const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+
+    formatedPRs.program_id = rf.program_id
+    formatedPRs.rf_id = rf.id
+
+    const employeeRequestedBy = await this.emplyeeRepository.getEmployeeById(pr.requested_by ?? undefined)
+    formatedPRs.requested_by = {
+      name: employeeRequestedBy.full_name,
+      employee_pass_photo: employeeRequestedBy.pass_photo_path,
+      id: employeeRequestedBy.id,
+      bank_name: employeeRequestedBy.bank_name,
+      bank_branch: employeeRequestedBy.bank_branch,
+      bank_path: employeeRequestedBy.bank_path,
+      bank_acc_name: employeeRequestedBy.bank_acc_name,
+      bank_acc_number: employeeRequestedBy.bank_acc_number,
+    } as EmployeeProfile
+
+    if (pr.head_of_finance_approval_by) {
+      const employeeHOFApprovedBy = await this.emplyeeRepository.getEmployeeById(pr.head_of_finance_approval_by)
+      if (employeeHOFApprovedBy) {
+        formatedPRs.head_of_finance_approval_by = {
+          name: employeeHOFApprovedBy.full_name,
+          employee_pass_photo: employeeHOFApprovedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.head_of_finance_approval_by = null
+    }
+
+    //console.log('HOO', pr)
+
+    if (pr.budget_controller_approval_by) {
+      const employeeHOOApprovedBy = await this.emplyeeRepository.getEmployeeById(pr.budget_controller_approval_by)
+      if (employeeHOOApprovedBy) {
+        formatedPRs.budget_controller_approval_by = {
+          name: employeeHOOApprovedBy.full_name,
+          employee_pass_photo: employeeHOOApprovedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.budget_controller_approval_by = null
+    }
+
+    if (pr.aps_head_of_finance_approval_by) {
+      const employeeHOFApprovedBy = await this.emplyeeRepository.getEmployeeById(pr.aps_head_of_finance_approval_by)
+      if (employeeHOFApprovedBy) {
+        formatedPRs.aps_head_of_finance_approval_by = {
+          name: employeeHOFApprovedBy.full_name,
+          employee_pass_photo: employeeHOFApprovedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.aps_head_of_finance_approval_by = null
+    }
+
+    //console.log('HOO', pr)
+
+    if (pr.aps_budget_controller_approval_by) {
+      const employeeHOOApprovedBy = await this.emplyeeRepository.getEmployeeById(pr.aps_budget_controller_approval_by)
+      if (employeeHOOApprovedBy) {
+        formatedPRs.aps_budget_controller_approval_by = {
+          name: employeeHOOApprovedBy.full_name,
+          employee_pass_photo: employeeHOOApprovedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.aps_budget_controller_approval_by = null
+    }
+
+    if (pr.program_manager_approval_by) {
+      const employeeHOOApprovedBy = await this.emplyeeRepository.getEmployeeById(pr.program_manager_approval_by)
+      if (employeeHOOApprovedBy) {
+        formatedPRs.program_manager_approval_by = {
+          name: employeeHOOApprovedBy.full_name,
+          employee_pass_photo: employeeHOOApprovedBy.pass_photo_path,
+        } as EmployeeProfile
+      }
+    } else {
+      formatedPRs.program_manager_approval_by = null
+    }
+    formatedPRs.program_manager_approval = pr.program_manager_approval
+
+    formatedPRs.requested_at = pr.requested_at
+    formatedPRs.vendor_id = pr.vendor_id
+    formatedPRs.payment_date = pr.payment_date
+    formatedPRs.spending_deadline = pr.spending_deadline
+    formatedPRs.expected_payment_date = pr.expected_payment_date
+    formatedPRs.program_manager_approval_at = pr.program_manager_approval_at
+    formatedPRs.budget_controller_approval_at = pr.budget_controller_approval_at
+    formatedPRs.finance_checking_process_at = pr.finance_checking_process_at
+    formatedPRs.processed_at = pr.processed_at
+
+    formatedPRs.with_ppn = pr.with_ppn
+    formatedPRs.budget_controller_approval = pr.budget_controller_approval
+    formatedPRs.head_of_finance_approval = pr.head_of_finance_approval
+
+    //TODO: check payment type
+    formatedPRs.payment_type = pr.payment_type
+
+    // iterate projects
+    const projects = []
+
+    // insert project
+    //console.log(pr.pr_budgets)
+    for (const budget of JSON.parse(pr.pr_budgets)) {
+      let budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+
+      if (!budgetDetail) {
+        // if not exist budget and budget saved json has activity id create budget to that activity id
+        if (budget.activity_id == undefined) {
+          continue
+        }
+        await this.budgetRepository.add({
+          id: budget.id,
+          activity_id: budget.activity_id,
+          ordering_seq: budget.ordering_seq,
+          code: budget.code,
+          description: budget.description,
+          vendor_category_info_id: budget.vendor_category_id,
+          qty: budget.qty,
+          unit: budget.unit,
+          pkg_qty: budget.pkg_qty,
+          pkg_unit: budget.pkg_unit,
+          cost: budget.unit_cost_value,
+        })
+
+        budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+        if (!budgetDetail) {
+          continue
+        }
+      }
+      //console.log('budget -==> ', budgetDetail)
+
+      const project = new BudgetProgramProjectDetail()
+      project.id = budgetDetail.activities.projects.id
+      project.code = budgetDetail.activities.projects.code
+      project.description = budgetDetail.activities.projects.description
+      project.ordering_seq = budgetDetail.activities.projects.ordering_seq
+      project.activities = []
+
+      // if poject id exist dont push
+
+      const exist = projects.filter((prj) => {
+        return prj.id == project.id
+      })
+      if (exist.length < 1) {
+        projects.push(project)
+      }
+    }
+    //console.log('TOTAL SAVED BUDGET', JSON.parse(pr.pr_budgets).length)
+
+    // iterate activity
+    for (const budget of JSON.parse(pr.pr_budgets)) {
+      const budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+      //console.log('budget -==> ', budgetDetail)
+
+      const activity = new BudgetProgramProjectActivity()
+      activity.id = budgetDetail.activities.id
+      activity.ordering_seq = budgetDetail.activities.ordering_seq
+      activity.description = budgetDetail.activities.description
+      activity.code = budgetDetail.activities.code
+      activity.budgets = []
+
+      for (const prj of projects) {
+        if (prj.id == budgetDetail.activities.project_id) {
+          const idxOf = projects.indexOf(prj)
+          //console.log(idxOf)
+
+          const exist = projects[idxOf].activities.filter((actvt) => {
+            return actvt.id == activity.id
+          })
+          if (exist.length < 1) {
+            projects[idxOf].activities.push(activity)
+          }
+        }
+      }
+    }
+
+    // interate budget
+    for (const budget of JSON.parse(pr.pr_budgets)) {
+      const budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+      //console.log('budget -==> ', budgetDetail)
+
+      const budgetD = budget as BudgetActivity
+
+      //console.log('busget category info', budgetDetail.vendor_category_info)
+
+      budget.vendor_category_information = budgetDetail.vendor_category_info
+
+      try {
+        const vendor = await this.vendorRepository.getVendorById(budget.recommended_vendor)
+        //console.log('recommended vendor', vendor.vendor_information)
+
+        budget.recommended_vendor = vendor?.vendor_information['name']
+      } catch (e) {
+        budget.recommended_vendor = ''
+      }
+
+      for (const prj of projects) {
+        if (prj.id == budgetDetail.activities.project_id) {
+          const idxOf = projects.indexOf(prj)
+          //console.log(idxOf)
+
+          for (const actv of projects[idxOf].activities) {
+            if (actv.id == budgetDetail.activities.id) {
+              const actIdxOf = projects[idxOf].activities.indexOf(actv)
+
+              const exist = projects[idxOf].activities[actIdxOf].budgets.filter((bdgt) => {
+                return bdgt.id == budgetD.id
+              })
+              if (exist.length < 1) {
+                projects[idxOf].activities[actIdxOf].budgets.push(budgetD)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    formatedPRs.projects = projects
+
+    console.log(pr)
+
+    console.dir(JSON.stringify(formatedPRs))
+
+    return formatedPRs
+  }
+
+  async prMarkFinanceOnChecking(pr_id: string, user_id: string): Promise<any> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.markPaymentRequestCheckingStatus(pr_id, employee[0].id, PRFinanceCheckingStatus.CHECKING)
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+    const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    await this.notifRepo.resolveNotifByRefId(pr_id, NotifType.ACTION_PAYMENT_REQUEST_CHECK)
+
+    await this.generalRepo.createLog({
+      pr_id: pr_id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Mark the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project as Ongoing Check`,
+    })
+
+    return null
+  }
+
+  async prUnMarkFinanceOnChecking(pr_id: string, user_id: string): Promise<any> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.unMarkPaymentRequestCheckingStatus(pr_id)
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+    const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    await this.notifRepo.resolveNotifByRefId(pr_id, NotifType.ACTION_PAYMENT_REQUEST_CHECK)
+
+    await this.generalRepo.createLog({
+      pr_id: pr_id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Mark the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project as Unmark Check`,
+    })
+
+    return null
+  }
+
+  async prMarkFinanceCheckedFinish(pr_id: string, user_id: string): Promise<any> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.markPaymentRequestCheckingStatus(pr_id, employee[0].id, PRFinanceCheckingStatus.CHECKED)
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+
+    const rf: requisition_form = await this.rfRepository.getRfById('', '', pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    if (program.program_ownership_type === 'INTERNAL') {
+      const gmUser = await this.userRepository.getUserByRole(RoleDefinition.GENERAL_MANAGER)
+
+      if (!gmUser) {
+        throw new ServerNotFound('General Manager has not been set')
+      }
+
+      const gmEmployees = await this.emplyeeRepository.getEmployeeByUserId(gmUser.id)
+
+      if (!gmEmployees.length) {
+        throw new ServerNotFound('General Manager employee not found')
+      }
+
+      await this.notifRepo.create({
+        employee_id: gmEmployees[0].id,
+        ref_id: pr_id,
+        notif_type: NotifType.APPROVAL_PAYMENT_REQUEST,
+        deleted_at: null,
+      })
+    } else {
+      await this.notifRepo.create({
+        employee_id: program.program_manager,
+        ref_id: pr_id,
+        notif_type: NotifType.APPROVAL_PAYMENT_REQUEST,
+        deleted_at: null,
+      })
+    }
+
+    await this.generalRepo.createLog({
+      pr_id: pr_id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Done checking and add tax calculation the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project as Finance Checker`,
+    })
+
+    return null
+  }
+
+  async prMarkFinanceNeedRevision(pr_id: string, user_id: string, reject_note?: string): Promise<any> {
+    const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
+    await this.prRepository.markPaymentRequestCheckingStatus(
+      pr_id,
+      employee[0].id,
+      PRFinanceCheckingStatus.REVISION,
+      reject_note,
+    )
+
+    //TODO: reset state
+    await this.prRepository.updateById(pr_id, {
+      program_manager_approval: 'pending',
+      budget_controller_approval: 'approved',
+      finance_checking_process_status: PRFinanceCheckingStatus.REVISION,
+    })
+
+    const pr: payment_request = await this.prRepository.getPRById(pr_id)
+    const rf: requisition_form = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    await this.generalRepo.createLog({
+      pr_id: pr.id,
+      rf_id: pr.rf_id,
+      user_id: employee[0].user_id,
+      log_type: 'PaymentRequest',
+      raw_data: '',
+      program_id: rf.program_id,
+      message: `Reject the
+${
+  {
+    'payment-request': 'Payment Request',
+    'advance-payment-request': 'Advance Payment Request',
+    'travel-expense': 'Travel Expense',
+    'advance-perdiem': 'Advance Perdiem',
+    'advance-payment-statement': 'Advance Payment Statement',
+  }[pr.payment_type]
+}
+            <a href="/dashboard/finance/payment-request/${pr.id}">"${pr.description}"</a> from ${
+        program.program_name
+      } project as Finance Checker with a message:`,
+      body: reject_note,
+    })
+
+    return null
+  }
+
+  async updatePaymentRequest(pr: CreatePaymentRequestApiRequest, prId: string, userId: string): Promise<string> {
+    console.log('USER', userId)
+    let submittedByEmployee = await this.emplyeeRepository.getEmployeeByUserId(userId)
+
+    if (pr.created_by) {
+      submittedByEmployee = await this.emplyeeRepository.getEmployeeByEmployeeId(pr.created_by)
+    }
+
+    if (submittedByEmployee.length <= 0) {
+      throw new ServerNotFound('submited employee by not found')
+    }
+
+    const rf = await this.rfRepository.getRfByOnlyId(pr.rf_id)
+    const program = await this.programRepository.getById(rf.program_id)
+
+    // get current HOF and HOO
+    const hofUser = await this.userRepository.getUserByRole(RoleDefinition.HEAD_OF_FINANCE)
+    if (!hofUser) {
+      throw new ServerBadRequest('Head Of Finance has not been set')
+    }
+    const hof = await this.emplyeeRepository.getEmployeeByUserId(hofUser.id)
+
+    const hooUser = await this.userRepository.getUserByRole(RoleDefinition.HEAD_OF_OPERATION)
+    if (!hooUser) {
+      throw new ServerBadRequest('Head Of Operation has not been set')
+    }
+
+    for (const budget of pr.budgets as any) {
+      if (budget.is_dynamic != undefined) {
+        if (budget.activity_id == undefined) {
+          continue
+        }
+        await this.budgetRepository.add({
+          id: budget.id,
+          activity_id: budget.activity_id,
+          ordering_seq: budget.ordering_seq,
+          code: budget.code,
+          description: budget.description,
+          vendor_category_info_id: budget.vendor_category_id,
+          qty: budget.qty,
+          unit: budget.unit,
+          pkg_qty: budget.pkg_qty,
+          pkg_unit: budget.pkg_unit,
+          cost: budget.unit_cost_value,
+        })
+
+        const budgetDetail = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+        if (!budgetDetail) {
+          continue
+        }
+      }
+    }
+
+    //if in this RF has APR get budget apr and match with budget id
+    const apr = await this.prRepository.getListPrByTypeAndRfID(rf.id, pr.payment_type)
+    if (apr.length > 0 && pr.payment_type == PRTypes.PR) {
+      this.syncAPRToPR(pr.budgets, apr)
+    }
+
+    if (pr.vendor_id) {
+      const vendor = await this.vendorRepository.getVendorById(pr.vendor_id)
+      if (vendor) {
+        const aboutVEndorEval = {
+          Individual: false,
+          Group: true,
+          'Warga Negara Indonesia': TaxNationality.WNI,
+          'Warga Negara Asing': TaxNationality.WNA,
+        }
+        let taxCalculationResult: CalculationTaxResult
+        try {
+          const tax = new TaxCalculation({
+            with_npwp: true,
+            with_ppn: pr.with_ppn,
+            nationality:
+              aboutVEndorEval[
+                vendor.vendor_information['nationality'] == undefined
+                  ? 'Warga Negara Indonesia'
+                  : vendor.vendor_information['nationality']
+              ],
+            is_organization:
+              aboutVEndorEval[
+                vendor.vendor_information['organization_type'] == undefined
+                  ? 'Individual'
+                  : vendor.vendor_information['organization_type']
+              ],
+          } as TaxParam)
+
+          const prHistories = []
+
+          const prs = await this.prRepository.getListPRAll(program.id, pr.rf_id, null, false, null, vendor.id)
+          for (const pr of prs) {
+            const detail = await this.getPrDetail(pr.id)
+            prHistories.push(detail)
+          }
+
+          if (pr.budgets) {
+            for (const budget of pr.budgets) {
+              const chekedBudget = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+
+              if (!chekedBudget) {
+                throw new BadRequestException('Budget Not Found')
+              }
+            }
+          }
+
+          const payload = {
+            rf_id: pr.rf_id,
+            description: pr.description,
+            vendor_id: pr.vendor_id,
+            with_ppn: pr.with_ppn,
+            pr_budgets: JSON.stringify(pr.budgets),
+            attachments: JSON.stringify(pr.attachments),
+            expected_payment_date: pr.expected_payment_date,
+            requested_by: submittedByEmployee[0].id,
+            head_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+            budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+            program_manager_approval: PRApprovalStatus.PENDING.toString(),
+            aps_budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+            aps_haed_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+            payment_type: pr.payment_type,
+            aps_result: pr.aps_result,
+            aps_related_apr_id: pr.aps_related_pr_id,
+            travel_end_date_estimation: pr.travel_end_date_estimation,
+            spending_deadline: pr.spending_deadline,
+            head_of_finance_approval_by: hof[0].id,
+          }
+          if (!pr.created_by) {
+            payload['finance_checking_process_by'] = null
+            payload['finance_checking_process_status'] = null
+            payload['requested_at'] = new Date().toISOString()
+          }
+          const inserted = await this.prRepository.updateById(prId, payload)
+
+          const vendorType = await this.vendorRepository.getVendorTypeById(vendor.vendor_type)
+          if (!vendorType) {
+            throw new ServerBadRequest('Vendor type not found')
+          }
+
+          if (vendorType.tax_calculation_type == 'CALCULATE') {
+            const currentPr = await this.getPrDetail(inserted.id)
+            prHistories.push(currentPr)
+            taxCalculationResult = tax.setPaymentRequesstHistory(prHistories).calculate(currentPr)
+          } else if (vendorType.tax_calculation_type == 'SKIP') {
+            taxCalculationResult = {
+              calculation_params: null,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          } else if (vendorType.tax_calculation_type == 'MANUAL') {
+            taxCalculationResult = {
+              calculation_params: null,
+              taxes: [
+                {
+                  tax_type: 'NO TAX',
+                  total_tax: 0,
+                  percentage: 0,
+                  is_tier: false,
+                } as PRTaxes,
+              ],
+            } as CalculationTaxResult
+          }
+
+          await this.prRepository.updateById(inserted.id, {
+            tax: JSON.stringify(taxCalculationResult),
+          })
+
+          const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+          for (const finance_team of finance_team_members) {
+            await this.notifRepo.create({
+              employee_id: finance_team.id,
+              ref_id: inserted.id,
+              notif_type: NotifType.ACTION_PAYMENT_REQUEST_CHECK,
+              deleted_at: null,
+            })
+          }
+
+          return inserted.id
+        } catch (e) {
+          console.log(e)
+          console.log(pr)
+          throw new ServerBadRequest('Tax calculation failed')
+        }
+      } else {
+        throw new ServerBadRequest('Tax calculation failed - vendor information not found')
+      }
+    } else {
+      // without tax cslculation
+      if (pr.budgets) {
+        for (const budget of pr.budgets) {
+          const chekedBudget = await this.budgetRepository.getDetailBudgetUpTree(budget.id)
+
+          if (!chekedBudget) {
+            throw new BadRequestException('Budget Not Found')
+          }
+        }
+      }
+      const payload = {
+        rf_id: pr.rf_id,
+        description: pr.description,
+        with_ppn: pr.with_ppn,
+        pr_budgets: JSON.stringify(pr.budgets),
+        attachments: JSON.stringify(pr.attachments),
+        expected_payment_date: pr.expected_payment_date,
+        requested_by: submittedByEmployee[0].id,
+        head_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+        budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+        program_manager_approval: PRApprovalStatus.PENDING.toString(),
+        aps_budget_controller_approval: PRApprovalStatus.APPROVED.toString(),
+        aps_haed_of_finance_approval: PRApprovalStatus.PENDING.toString(),
+        payment_type: pr.payment_type,
+        aps_result: pr.aps_result,
+        aps_related_apr_id: pr.aps_related_pr_id,
+        travel_end_date_estimation: pr.travel_end_date_estimation,
+        spending_deadline: pr.spending_deadline,
+        head_of_finance_approval_by: hof[0].id,
+      }
+      if (!pr.created_by) {
+        payload['finance_checking_process_by'] = null
+        payload['finance_checking_process_status'] = null
+        payload['requested_at'] = new Date().toISOString()
+      }
+
+      const inserted = await this.prRepository.updateById(prId, payload)
+
+      const finance_team_members = await this.emplyeeRepository.getEmployeeByDepartment('Finance')
+      for (const finance_team of finance_team_members) {
+        await this.notifRepo.create({
+          employee_id: finance_team.id,
+          ref_id: inserted.id,
+          notif_type: NotifType.ACTION_PAYMENT_REQUEST_CHECK,
+          deleted_at: null,
+        })
+      }
+      return inserted.id
+    }
+  }
+}
