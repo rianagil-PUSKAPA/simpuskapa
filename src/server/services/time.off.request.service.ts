@@ -7,6 +7,7 @@ import { argv0 } from 'process'
 import { EmployeeContractRepository } from '../repositories/employee.contract.repository'
 import { EmployeeRepository } from '../repositories/employee.repository'
 import { NotificationRepository } from '../repositories/notification.repository'
+import { MailRepository } from '../repositories/mail.repository'
 import { TimeOffQuotaRepository } from '../repositories/time.off.quota.repository'
 import { NotifType } from '../types/notification.dto'
 import {
@@ -24,6 +25,7 @@ export class TimeOffRequestService {
     private timeOffQuotaRepository: TimeOffQuotaRepository,
     private notifRepo: NotificationRepository,
     private employeeContractRepo: EmployeeContractRepository,
+    private mailRepo: MailRepository,
   ) {}
 
   async updateTimeOffRequest(
@@ -88,15 +90,51 @@ export class TimeOffRequestService {
   }
 
   async updateTimeOffStatus(status: string, id: string): Promise<boolean> {
-    if (status == TimeOffRequestStatus.approved.toString()) {
-      this.timeOffQuotaRepository.updateTimeOffRequest(id, {
+    const previous = await this.timeOffQuotaRepository.findByIdSimple(id)
+    if (!previous) throw new BadRequestException('Time off request not found')
+
+    if (status === TimeOffRequestStatus.approved) {
+      await this.timeOffQuotaRepository.updateTimeOffRequest(id, {
         approved_at: new Date(),
-        status: status,
+        status,
       } as Prisma.time_off_requestUncheckedCreateInput)
     } else {
-      this.timeOffQuotaRepository.updateTimeOffRequest(id, {
-        status: status,
+      await this.timeOffQuotaRepository.updateTimeOffRequest(id, {
+        status,
       } as Prisma.time_off_requestUncheckedCreateInput)
+    }
+
+    if (previous.status === status) return true
+
+    if (status === 'approved' || status === 'rejected' || status === 'declined' || status === 'cancelled') {
+      const message = status === 'approved' ? 'disetujui' : status === 'cancelled' ? 'dibatalkan' : 'ditolak'
+      await this.mailRepo.sendWorkflowToEmployees(
+        [previous.employee_id],
+        `Pengajuan Cuti ${message}`,
+        `Pengajuan cuti tanggal ${dayjs(previous.start_date).format('DD MMM YYYY')} sampai ${dayjs(previous.end_date).format('DD MMM YYYY')} telah ${message}.`,
+        'https://sim.puskapa.org/dashboard/internal/timeoff-request',
+        'Lihat Status Cuti',
+      )
+
+      const contracts = await this.employeeContractRepo.getContractByEmployeeById(previous.employee_id)
+      const supervisorId = contracts?.[0]?.supervisor_id
+      if (supervisorId) {
+        await this.notifRepo.resolveNotif(supervisorId, id, NotifType.APPROVAL_TIMEOFF)
+      }
+
+      // Only ordinary annual leave is announced organization-wide. No medical, special,
+      // parental or other sensitive leave type, notes, attachments or reasons are shared.
+      if (status === 'approved' && previous.leave_type === LeaveType.annual) {
+        const employee = await this.employeeRepo.getEmployeeById(previous.employee_id)
+        if (employee) {
+          await this.mailRepo.sendWorkflowToAllActiveUsers(
+            'Informasi Cuti Staf',
+            `${employee.full_name} dijadwalkan cuti pada ${dayjs(previous.start_date).format('DD MMM YYYY')} sampai ${dayjs(previous.end_date).format('DD MMM YYYY')}.`,
+            'https://sim.puskapa.org/dashboard/internal/timeoff/all',
+            'Lihat Kalender Cuti',
+          )
+        }
+      }
     }
 
     return true
@@ -125,6 +163,14 @@ export class TimeOffRequestService {
         true,
       )
     }
+
+    // One announcement per collective leave event, not one per employee.
+    await this.mailRepo.sendWorkflowToAllActiveUsers(
+      'Informasi Cuti Bersama',
+      `Cuti bersama dijadwalkan pada ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')}.`,
+      'https://sim.puskapa.org/dashboard/internal/timeoff/all',
+      'Lihat Kalender Cuti',
+    )
 
     return
   }
@@ -190,12 +236,35 @@ export class TimeOffRequestService {
 
     const contract = await this.employeeContractRepo.getContractByEmployeeById(employeeId)
 
-    await this.notifRepo.create({
-      employee_id: contract[0].supervisor_id,
-      ref_id: inserted.id,
-      notif_type: NotifType.APPROVAL_TIMEOFF,
-      deleted_at: null,
-    })
+    // Directly approved collective leave should not leave an obsolete approval task.
+    if (!forceApprove) {
+      const supervisorId = contract?.[0]?.supervisor_id
+      if (supervisorId) {
+        await this.notifRepo.create({
+          employee_id: supervisorId,
+          ref_id: inserted.id,
+          notif_type: NotifType.APPROVAL_TIMEOFF,
+          deleted_at: null,
+        })
+
+        const requester = await this.employeeRepo.getEmployeeById(employeeId)
+        await this.mailRepo.sendWorkflowToEmployees(
+          [supervisorId],
+          'Permintaan Approval Cuti',
+          `${requester?.full_name || 'Staf'} mengajukan cuti ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')} dan membutuhkan persetujuan Anda.`,
+          'https://sim.puskapa.org/dashboard/internal/timeoff/requests',
+          'Tinjau Cuti',
+        )
+      }
+
+      await this.mailRepo.sendWorkflowToEmployees(
+        [employeeId],
+        'Pengajuan Cuti Diterima',
+        `Pengajuan cuti Anda untuk ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')} telah tercatat dan menunggu keputusan.`,
+        'https://sim.puskapa.org/dashboard/internal/timeoff-request',
+        'Lihat Pengajuan Cuti',
+      )
+    }
 
     return true
   }
