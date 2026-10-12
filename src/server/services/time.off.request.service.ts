@@ -185,7 +185,7 @@ export class TimeOffRequestService {
           ].join('\n')
 
           await this.mailRepo.sendWorkflowToAllActiveUsers(
-            `[SIM PUSKAPA] Time Off Notification - ${requester}`,
+            `Leave Announcement - ${requester} from ${start} to ${end}`,
             announcement,
             'https://sim.puskapa.org/dashboard/internal/timeoff/all',
             'Lihat Kalender Cuti',
