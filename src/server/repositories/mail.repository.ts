@@ -48,7 +48,7 @@ export class MailRepository {
   // Workflow mail is strictly role/assignment-based and sent only to active @puskapa.org accounts.
   // A delivery failure must never roll back a transaction that has already been saved.
   private isEligibleWorkflowEmail(email: string | null | undefined): email is string {
-    return typeof email === 'string' && /^[^\\s@]+@puskapa\\.org$/i.test(email.trim())
+    return typeof email === 'string' && /^[^\s@]+@puskapa\.org$/i.test(email.trim())
   }
 
   private escapeWorkflowText(value: string): string {
