@@ -184,8 +184,20 @@ export class TimeOffRequestService {
             requester,
           ].join('\n')
 
+          const differentYear = Boolean(
+            previous.start_date && previous.end_date &&
+            dayjs(previous.start_date).year() !== dayjs(previous.end_date).year(),
+          )
+          const subjectDateFormat = differentYear ? 'D MMM YYYY' : 'D MMM'
+          const subjectStart = previous.start_date
+            ? dayjs(previous.start_date).format(subjectDateFormat)
+            : '-'
+          const subjectEnd = previous.end_date
+            ? dayjs(previous.end_date).format(subjectDateFormat)
+            : '-'
+
           await this.mailRepo.sendWorkflowToAllActiveUsers(
-            `Leave Announcement - ${requester} from ${start} to ${end}`,
+            `Leave Announcement - ${requester} from ${subjectStart} to ${subjectEnd}`,
             announcement,
             'https://sim.puskapa.org/dashboard/internal/timeoff/all',
             'Lihat Kalender Cuti',
