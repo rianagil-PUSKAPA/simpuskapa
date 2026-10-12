@@ -190,10 +190,10 @@ export class TimeOffRequestService {
           )
           const subjectDateFormat = differentYear ? 'D MMM YYYY' : 'D MMM'
           const subjectStart = previous.start_date
-            ? dayjs(previous.start_date).format(subjectDateFormat)
+            ? dayjs(previous.start_date).locale('en').format(subjectDateFormat)
             : '-'
           const subjectEnd = previous.end_date
-            ? dayjs(previous.end_date).format(subjectDateFormat)
+            ? dayjs(previous.end_date).locale('en').format(subjectDateFormat)
             : '-'
 
           await this.mailRepo.sendWorkflowToAllActiveUsers(
