@@ -181,7 +181,7 @@ export class TimeOffRequestService {
             '',
             'Dengan Hormat,',
             requester,
-          ].join('\\n')
+          ].join('\n')
 
           await this.mailRepo.sendWorkflowToAllActiveUsers(
             `[SIM PUSKAPA] Time Off Notification - ${requester}`,
