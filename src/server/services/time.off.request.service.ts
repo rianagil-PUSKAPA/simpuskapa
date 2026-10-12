@@ -122,14 +122,70 @@ export class TimeOffRequestService {
         await this.notifRepo.resolveNotif(supervisorId, id, NotifType.APPROVAL_TIMEOFF)
       }
 
-      // Only ordinary annual leave is announced organization-wide. No medical, special,
-      // parental or other sensitive leave type, notes, attachments or reasons are shared.
-      if (status === 'approved' && previous.leave_type === LeaveType.annual) {
+      // Announcement is sent only for a newly approved time-off request.
+      // Notes for medical/family leave are intentionally omitted from all-staff mail.
+      if (status === 'approved' && previous.leave_type !== LeaveType.fine) {
         const employee = await this.employeeRepo.getEmployeeById(previous.employee_id)
         if (employee) {
+          const replacement = previous.pic_employee_id
+            ? await this.employeeRepo.getEmployeeById(previous.pic_employee_id)
+            : null
+
+          const leaveLabels: Record<string, string> = {
+            annual: 'Cuti Tahunan',
+            sick_certified: 'Izin Sakit (dengan Surat Dokter)',
+            sick_uncertified: 'Izin Sakit',
+            special: 'Izin Khusus',
+            compensatory: 'Cuti Pengganti',
+            maternity: 'Cuti Melahirkan',
+            paternity: 'Cuti Ayah',
+            work_remotely: 'Bekerja dari Jarak Jauh',
+            isolation: 'Isolasi Mandiri',
+            caregiving: 'Cuti Perawatan Keluarga',
+            joint_holiday: 'Cuti Bersama',
+          }
+          const leaveLabel = previous.leave_type
+            ? leaveLabels[previous.leave_type] || previous.leave_type
+            : 'Cuti / Izin'
+
+          const privateLeaveTypes: LeaveType[] = [
+            LeaveType.sick_certified,
+            LeaveType.sick_uncertified,
+            LeaveType.maternity,
+            LeaveType.paternity,
+            LeaveType.caregiving,
+            LeaveType.isolation,
+          ]
+          const note = previous.leave_type && privateLeaveTypes.includes(previous.leave_type)
+            ? 'Tidak ditampilkan untuk menjaga privasi'
+            : previous.notes?.trim() || '-'
+
+          const start = previous.start_date ? dayjs(previous.start_date).format('DD/MM/YYYY') : '-'
+          const end = previous.end_date ? dayjs(previous.end_date).format('DD/MM/YYYY') : '-'
+          const duration = previous.duration ?? '-'
+          const requester = employee.full_name
+          const picName = replacement?.full_name || 'Belum ditentukan'
+
+          const announcement = [
+            'Dear All,',
+            '',
+            `Melalui email ini saya ingin memberitahukan bahwa saya, ${requester}, akan mengambil cuti/izin dengan rincian sebagai berikut:`,
+            '',
+            `Jenis Izin: ${leaveLabel}`,
+            `Dari Tanggal: ${start}`,
+            `Sampai Tanggal: ${end}`,
+            `Jumlah hari cuti: ${duration} hari`,
+            `Catatan: ${note}`,
+            '',
+            `Selama tidak berada di kantor, yang akan menggantikan ${requester} adalah ${picName} (Person in Charge while Time Off).`,
+            '',
+            'Dengan Hormat,',
+            requester,
+          ].join('\\n')
+
           await this.mailRepo.sendWorkflowToAllActiveUsers(
-            'Informasi Cuti Staf',
-            `${employee.full_name} dijadwalkan cuti pada ${dayjs(previous.start_date).format('DD MMM YYYY')} sampai ${dayjs(previous.end_date).format('DD MMM YYYY')}.`,
+            `[SIM PUSKAPA] Time Off Notification - ${requester}`,
+            announcement,
             'https://sim.puskapa.org/dashboard/internal/timeoff/all',
             'Lihat Kalender Cuti',
           )
