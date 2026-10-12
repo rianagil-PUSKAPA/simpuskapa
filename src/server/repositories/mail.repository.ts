@@ -73,7 +73,7 @@ export class MailRepository {
 
     const templateValues = new Map<string, string>([
       ['{{.HEADING}}', this.escapeWorkflowText(subject)],
-      ['{{.BODY}}', '<p>' + this.escapeWorkflowText(message).replace(/\r?\n/g, '<br />') + '</p>'],
+      ['{{.BODY}}', this.escapeWorkflowText(message).replace(/\r?\n/g, '<br />')],
       ['{{.BUTTON_TITLE}}', this.escapeWorkflowText(buttonTitle)],
       ['{{.BUTTON_URL}}', link],
     ])
