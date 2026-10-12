@@ -75,7 +75,7 @@ export class RfServiceService {
     )
 
     const actionEmployeeId = this.getRfActionEmployeeId(rf.action_by)
-    if (actionEmployeeId && actionEmployeeId !== rf.requested_by) {
+    if (actionEmployeeId) {
       await this.mailRepo.sendWorkflowToEmployees(
         [actionEmployeeId],
         `Ditugaskan sebagai Action by - ${label}`,
@@ -106,7 +106,7 @@ export class RfServiceService {
 
     if (status === 'approved') {
       const actionEmployeeId = this.getRfActionEmployeeId(rf.action_by)
-      if (actionEmployeeId && actionEmployeeId !== rf.requested_by) {
+      if (actionEmployeeId) {
         await this.mailRepo.sendWorkflowToEmployees(
           [actionEmployeeId],
           'RF Telah Disetujui - Action by',
