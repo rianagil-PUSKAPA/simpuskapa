@@ -47,6 +47,77 @@ export class RfServiceService {
     private userRepository: UserRepository,
   ) {}
 
+
+  private getRfActionEmployeeId(actionBy: string | null | undefined): string | null {
+    const parts = String(actionBy ?? '').split(':')
+    return parts.length === 2 && parts[0] === 'employee' && parts[1] ? parts[1] : null
+  }
+
+  private async notifyRfSubmitted(rf: requisition_form): Promise<void> {
+    const program = await this.programRepository.getById(rf.program_id)
+    if (!program) return
+
+    const url = `https://sim.puskapa.org/dashboard/procurement/${program.id}/detail/${rf.program_project_related_id}/${rf.id}`
+    const label = ({
+      PROCUREMENT: 'Procurement',
+      PERSONAL_HIRE: 'Personal Hire',
+      TRAVEL: 'Travel',
+      STAFF_COST: 'Staff Cost',
+    }[rf.rf_type] || 'Requisition') + ' RF'
+    const context = `${label} "${rf.about_request}" pada ${program.program_name}`
+
+    await this.mailRepo.sendWorkflowToEmployees(
+      [rf.requested_by],
+      `${label} berhasil diajukan`,
+      `Pengajuan ${context} berhasil dibuat atau diajukan kembali.`,
+      url,
+      'Lihat RF',
+    )
+
+    const actionEmployeeId = this.getRfActionEmployeeId(rf.action_by)
+    if (actionEmployeeId && actionEmployeeId !== rf.requested_by) {
+      await this.mailRepo.sendWorkflowToEmployees(
+        [actionEmployeeId],
+        `Ditugaskan sebagai Action by - ${label}`,
+        `Anda dipilih sebagai Action by untuk ${context}. Silakan periksa penugasan pada SIM PUSKAPA.`,
+        url,
+        'Lihat Penugasan',
+      )
+    }
+  }
+
+  private async notifyRfDecision(
+    rf: requisition_form,
+    status: 'approved' | 'rejected',
+    rejectNote = '',
+  ): Promise<void> {
+    const program = await this.programRepository.getById(rf.program_id)
+    if (!program) return
+
+    const url = `https://sim.puskapa.org/dashboard/procurement/${program.id}/detail/${rf.program_project_related_id}/${rf.id}`
+    const subject = status === 'approved' ? 'RF Disetujui' : 'RF Ditolak / Perlu Revisi'
+    await this.mailRepo.sendWorkflowToEmployees(
+      [rf.requested_by],
+      subject,
+      `RF "${rf.about_request}" pada ${program.program_name} ${status === 'approved' ? 'telah disetujui' : 'ditolak dan perlu direvisi'}.${rejectNote ? ' Catatan: ' + rejectNote : ''}`,
+      url,
+      'Lihat Status RF',
+    )
+
+    if (status === 'approved') {
+      const actionEmployeeId = this.getRfActionEmployeeId(rf.action_by)
+      if (actionEmployeeId && actionEmployeeId !== rf.requested_by) {
+        await this.mailRepo.sendWorkflowToEmployees(
+          [actionEmployeeId],
+          'RF Telah Disetujui - Action by',
+          `RF "${rf.about_request}" pada ${program.program_name} telah disetujui. Silakan tindak lanjuti penugasan Anda.`,
+          url,
+          'Buka RF',
+        )
+      }
+    }
+  }
+
   async sendNotifToProgramManagerToApprove(rfId: string, programManagerEmployeeId: string) {
     const rf = await this.rfRepository.getRfByOnlyId(rfId)
     const program = await this.programRepository.getById(rf.program_id)
@@ -172,6 +243,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(insertedRf.id, program.program_manager)
+    await this.notifyRfSubmitted(insertedRf)
     await this.notifRepo.create({
       employee_id: insertedRf.requested_by,
       ref_id: insertedRf.id,
@@ -237,6 +309,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(insertedRf.id, program.program_manager)
+    await this.notifyRfSubmitted(insertedRf)
     await this.notifRepo.create({
       employee_id: insertedRf.requested_by,
       ref_id: insertedRf.id,
@@ -285,6 +358,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(insertedRf.id, program.program_manager)
+    await this.notifyRfSubmitted(insertedRf)
     await this.notifRepo.create({
       employee_id: insertedRf.requested_by,
       ref_id: insertedRf.id,
@@ -361,6 +435,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(rfd.id, program.program_manager)
+    await this.notifyRfSubmitted(rfd)
     await this.notifRepo.create({
       employee_id: rfd.requested_by,
       ref_id: rfd.id,
@@ -410,6 +485,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(rfd.id, program.program_manager)
+    await this.notifyRfSubmitted(rfd)
     await this.notifRepo.create({
       employee_id: rfd.requested_by,
       ref_id: rfd.id,
@@ -492,6 +568,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(inserted.id, program.program_manager)
+    await this.notifyRfSubmitted(inserted)
     await this.notifRepo.create({
       employee_id: inserted.requested_by,
       ref_id: inserted.id,
@@ -540,6 +617,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(inserted.id, program.program_manager)
+    await this.notifyRfSubmitted(inserted)
     await this.notifRepo.create({
       employee_id: inserted.requested_by,
       ref_id: inserted.id,
@@ -1177,6 +1255,7 @@ export class RfServiceService {
       })
 
       await this.rfRepository.updateApprovalProgramManager(rfId, 'revision')
+      await this.notifyRfDecision(rf, 'rejected', rejectNote)
 
       return ''
     }
@@ -1214,6 +1293,10 @@ export class RfServiceService {
           program.program_ownership_type === 'INTERNAL' ? 'General Manager' : 'Project Manager'
         }`,
       })
+    }
+
+    if (status === 'approved') {
+      await this.notifyRfDecision(rf, 'approved')
     }
 
     return ''
@@ -1395,6 +1478,7 @@ export class RfServiceService {
     })
 
     await this.sendNotifToProgramManagerToApprove(insertedRf.id, program.program_manager)
+    await this.notifyRfSubmitted(insertedRf)
     await this.notifRepo.create({
       employee_id: insertedRf.requested_by,
       ref_id: insertedRf.id,
