@@ -1038,7 +1038,7 @@ export class ProgramService {
     tempVal.set('{{.HEADING}}', `Project ${inserted.program_name} was created by ${employee[0].full_name}`)
     tempVal.set('{{.BODY}}', 'Congratulations, project created')
     tempVal.set('{{.BUTTON_TITLE}}', 'Open Project')
-    tempVal.set('{{.BUTTON_URL}}', `https://staging.sim.puskapa.org/dashboard/project/${inserted.id}`)
+    tempVal.set('{{.BUTTON_URL}}', `https://sim.puskapa.org/dashboard/project/${inserted.id}`)
 
     await this.mailRepo.sendNotificationNoReply(
       `Project ${inserted.program_name} was created by ${employee[0].full_name}`,
