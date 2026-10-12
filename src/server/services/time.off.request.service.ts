@@ -149,6 +149,7 @@ export class TimeOffRequestService {
             : 'Cuti / Izin'
 
           const privateLeaveTypes: LeaveType[] = [
+            LeaveType.special,
             LeaveType.sick_certified,
             LeaveType.sick_uncertified,
             LeaveType.maternity,
