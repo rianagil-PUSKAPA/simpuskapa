@@ -1258,6 +1258,8 @@ ${
   }
 
   async prMarkPaid(pr_id: string, user_id: string): Promise<any> {
+    const currentPayment = await this.prRepository.getPRById(pr_id)
+    const alreadyPaid = Boolean(currentPayment?.paid_at)
     await this.prRepository.markPaymentPaid(pr_id, null)
 
     const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
@@ -1289,7 +1291,9 @@ ${
       } project `,
     })
 
-    await this.notifyPaymentRequester(pr_id, 'paid')
+    if (!alreadyPaid) {
+      await this.notifyPaymentRequester(pr_id, 'paid')
+    }
     return null
   }
 
