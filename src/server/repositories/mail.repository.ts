@@ -2,10 +2,16 @@ import { Injectable } from '@nestjs/common'
 import { MailTransporter } from '@server/commands/mail.transporter'
 import * as fs from 'fs'
 import path from 'path'
+import { EmployeeRepository } from './employee.repository'
+import { UserRepository } from './user.repository'
 
 @Injectable()
 export class MailRepository {
-  constructor(public mailTransporter: MailTransporter) {}
+  constructor(
+    public mailTransporter: MailTransporter,
+    private employeeRepo: EmployeeRepository,
+    private userRepo: UserRepository,
+  ) {}
 
   async sendNotificationNoReply(subject: string, mailTo: string, templateValues: Map<string, string>): Promise<any> {
     let templateFile = fs.readFileSync(
@@ -36,6 +42,97 @@ export class MailRepository {
     })
 
     console.log('Message sent: %s', info)
+  }
+
+
+  // Workflow mail is strictly role/assignment-based and sent only to active @puskapa.org accounts.
+  // A delivery failure must never roll back a transaction that has already been saved.
+  private isEligibleWorkflowEmail(email: string | null | undefined): email is string {
+    return typeof email === 'string' && /^[^\s@]+@puskapa\.org$/i.test(email.trim())
+  }
+
+  private escapeWorkflowText(value: string): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  private async deliverWorkflowMail(
+    emails: string[],
+    subject: string,
+    message: string,
+    url: string,
+    buttonTitle = 'Open SIM PUSKAPA',
+  ): Promise<void> {
+    const link = url.startsWith('https://sim.puskapa.org/')
+      ? url
+      : 'https://sim.puskapa.org/dashboard'
+
+    const templateValues = new Map<string, string>([
+      ['{{.HEADING}}', this.escapeWorkflowText(subject)],
+      ['{{.BODY}}', this.escapeWorkflowText(message).replace(/\r?\n/g, '<br />')],
+      ['{{.BUTTON_TITLE}}', this.escapeWorkflowText(buttonTitle)],
+      ['{{.BUTTON_URL}}', link],
+    ])
+
+    for (const email of new Set(emails.map((value) => value.trim().toLowerCase()))) {
+      if (!this.isEligibleWorkflowEmail(email)) continue
+
+      try {
+        await this.sendNotificationNoReply(subject, email, templateValues)
+      } catch (error) {
+        console.error('SIM PUSKAPA workflow email delivery failed:', email, error)
+      }
+    }
+  }
+
+  async sendWorkflowToEmployees(
+    employeeIds: Array<string | null | undefined>,
+    subject: string,
+    message: string,
+    url: string,
+    buttonTitle?: string,
+  ): Promise<void> {
+    const emails: string[] = []
+
+    for (const employeeId of new Set(employeeIds.filter((id): id is string => !!id))) {
+      try {
+        const employee = await this.employeeRepo.getEmployeeById(employeeId)
+        if (!employee || employee.deleted_at || employee.user?.deleted_at || employee.user?.status !== true) {
+          continue
+        }
+
+        if (this.isEligibleWorkflowEmail(employee.user?.email)) {
+          emails.push(employee.user.email)
+        }
+      } catch (error) {
+        console.error('SIM PUSKAPA workflow employee lookup failed:', employeeId, error)
+      }
+    }
+
+    await this.deliverWorkflowMail(emails, subject, message, url, buttonTitle)
+  }
+
+  // Only for organization-wide announcements (never for pending requests or private leave details).
+  async sendWorkflowToAllActiveUsers(
+    subject: string,
+    message: string,
+    url: string,
+    buttonTitle?: string,
+  ): Promise<void> {
+    try {
+      const users = (await this.userRepo.getAllusers()) ?? []
+      const emails = users
+        .filter((user) => user.deleted_at === null && user.status === true)
+        .map((user) => user.email)
+
+      await this.deliverWorkflowMail(emails, subject, message, url, buttonTitle)
+    } catch (error) {
+      console.error('SIM PUSKAPA workflow broadcast failed:', error)
+    }
   }
 
   async sendForgotPassword(mailTo: string, temporaryPassword: string): Promise<void> {
