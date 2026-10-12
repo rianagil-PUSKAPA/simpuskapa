@@ -1425,6 +1425,16 @@ ${
         })
       }
 
+      if (approval === 'approved') {
+        await this.mailRepo.sendWorkflowToEmployees(
+          finance_team_members.map((finance) => finance.id),
+          `${this.getPaymentRequestLabel(prDetail.payment_type)} - Siap Dibayar`,
+          `Pengajuan "${prDetail.description || prDetail.request_number}" telah disetujui dan siap diproses pembayaran oleh Finance.`,
+          `https://sim.puskapa.org/dashboard/finance/payment-request/${id}`,
+          'Proses Pembayaran',
+        )
+      }
+
       if (approval == 'rejected') {
         await this.prRepository.updateById(id, {
           program_manager_approval: 'rejected',
