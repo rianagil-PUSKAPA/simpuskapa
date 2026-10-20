@@ -165,7 +165,7 @@ export class PRServiceService {
 
   private async notifyPaymentRequester(
     prId: string,
-    event: 'submitted' | 'verified' | 'approved' | 'rejected' | 'paid',
+    event: 'submitted' | 'approved' | 'rejected' | 'paid',
     note = '',
   ): Promise<void> {
     try {
@@ -179,21 +179,14 @@ export class PRServiceService {
       const label = this.getPaymentRequestLabel(payment.payment_type)
       const status = {
         submitted: 'Berhasil Diajukan',
-        verified: 'Berhasil di Verifikasi',
         approved: 'Disetujui',
         rejected: 'Ditolak / Perlu Revisi',
         paid: 'Pembayaran Selesai',
       }[event]
-      const context = `${label} "${payment.description || payment.request_number}" pada ${program.program_name}`
-      const message = event === 'submitted'
-        ? `${context} berhasil diajukan dan menunggu verifikasi Finance Checker.`
-        : event === 'verified'
-        ? `${context} telah diverifikasi oleh Finance Checker dan diteruskan untuk proses approval.`
-        : `${context}: ${status}.${note ? ' Catatan: ' + note : ''}`
       await this.mailRepo.sendWorkflowToEmployees(
         [payment.requested_by],
         `${label} - ${status}`,
-        message,
+        `${label} "${payment.description || payment.request_number}" pada ${program.program_name}: ${status}.${note ? ' Catatan: ' + note : ''}`,
         `https://sim.puskapa.org/dashboard/finance/payment-request/${payment.id}`,
         'Lihat Payment Request',
       )
@@ -2069,7 +2062,7 @@ ${
   }
 
   async prMarkFinanceCheckedFinish(pr_id: string, user_id: string): Promise<any> {
-    const previouslyChecked = await this.prRepository.getPRById(pr_id)
+    const previousFinanceStatus = (await this.prRepository.getPRById(pr_id))?.finance_checking_process_status
     const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
     await this.prRepository.markPaymentRequestCheckingStatus(pr_id, employee[0].id, PRFinanceCheckingStatus.CHECKED)
 
@@ -2097,12 +2090,17 @@ ${
 
     await this.sendPaymentRequestApprovalEmail(pr_id)
 
-    // Verification is a distinct step from submission and PM/GM approval.
-    // Repeated Done Check calls must not send another verification email.
-    if (previouslyChecked?.finance_checking_process_status !== PRFinanceCheckingStatus.CHECKED) {
-      await this.notifyPaymentRequester(pr_id, 'verified')
+    // Notify requester once on Finance verification; leave approval routing untouched.
+    if (previousFinanceStatus !== PRFinanceCheckingStatus.CHECKED && pr.requested_by) {
+      const label = this.getPaymentRequestLabel(pr.payment_type)
+      await this.mailRepo.sendWorkflowToEmployees(
+        [pr.requested_by],
+        `${label} - Berhasil di Verifikasi`,
+        `${label} "${pr.description || pr.request_number}" pada ${program.program_name} telah diverifikasi oleh Finance Checker dan diteruskan untuk proses approval.`,
+        `https://sim.puskapa.org/dashboard/finance/payment-request/${pr.id}`,
+        'Lihat Payment Request',
+      )
     }
-
     await this.generalRepo.createLog({
       pr_id: pr_id,
       rf_id: pr.rf_id,
