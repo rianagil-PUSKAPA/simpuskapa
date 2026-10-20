@@ -64,6 +64,7 @@ export class PRServiceService {
         'advance-payment-request': 'Advance Payment Request',
         'travel-expense': 'Travel Expense',
         'advance-perdiem': 'Advance Perdiem',
+        'advance-perdiem-fee': 'Advance Perdiem Fee',
         'advance-payment-statement': 'Advance Payment Statement',
       }[paymentType || ''] || 'Payment Request'
     )
@@ -159,6 +160,39 @@ export class PRServiceService {
     tempVal.set('{{.BUTTON_URL}}', `https://sim.puskapa.org/dashboard/finance/payment-request/${pr.id}`)
 
     await this.mailRepo.sendNotificationNoReply(`${label} Approval Request`, approver.user.email, tempVal)
+  }
+
+
+  private async notifyPaymentRequester(
+    prId: string,
+    event: 'submitted' | 'approved' | 'rejected' | 'paid',
+    note = '',
+  ): Promise<void> {
+    try {
+      const payment = await this.prRepository.getPRById(prId)
+      if (!payment?.requested_by) return
+      const rf = await this.rfRepository.getRfByOnlyId(payment.rf_id)
+      if (!rf) return
+      const program = await this.programRepository.getById(rf.program_id)
+      if (!program) return
+
+      const label = this.getPaymentRequestLabel(payment.payment_type)
+      const status = {
+        submitted: 'Berhasil Diajukan',
+        approved: 'Disetujui',
+        rejected: 'Ditolak / Perlu Revisi',
+        paid: 'Pembayaran Selesai',
+      }[event]
+      await this.mailRepo.sendWorkflowToEmployees(
+        [payment.requested_by],
+        `${label} - ${status}`,
+        `${label} "${payment.description || payment.request_number}" pada ${program.program_name}: ${status}.${note ? ' Catatan: ' + note : ''}`,
+        `https://sim.puskapa.org/dashboard/finance/payment-request/${payment.id}`,
+        'Lihat Payment Request',
+      )
+    } catch (error) {
+      console.error('Could not notify payment requester:', prId, event, error)
+    }
   }
 
   syncAPRToPR(budgets: ActivityBudgetList[], apr: any): ActivityBudgetList[] {
@@ -619,6 +653,8 @@ export class PRServiceService {
             deleted_at: null,
           })
 
+          await this.notifyPaymentRequester(inserted.id, 'submitted')
+
           return inserted.id
         } catch (e) {
           console.log(e)
@@ -703,6 +739,8 @@ export class PRServiceService {
         deleted_at: null,
       })
       await this.notifRepo.resolveNotif(inserted.requested_by, inserted.rf_id, NotifType.ACTION_REQUISITION_FORM)
+
+      await this.notifyPaymentRequester(inserted.id, 'submitted')
 
       return inserted.id
     }
@@ -1220,6 +1258,8 @@ ${
   }
 
   async prMarkPaid(pr_id: string, user_id: string): Promise<any> {
+    const currentPayment = await this.prRepository.getPRById(pr_id)
+    const alreadyPaid = Boolean(currentPayment?.paid_at)
     await this.prRepository.markPaymentPaid(pr_id, null)
 
     const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
@@ -1251,6 +1291,9 @@ ${
       } project `,
     })
 
+    if (!alreadyPaid) {
+      await this.notifyPaymentRequester(pr_id, 'paid')
+    }
     return null
   }
 
@@ -1279,6 +1322,9 @@ ${
 
     if (approvalType == APSApprovalBy.HOF) {
       await this.prRepository.updatePrHOFApproval(id, approval, submittedByEmployee[0].id)
+      if (approval === 'approved' || approval === 'rejected') {
+        await this.notifyPaymentRequester(id, approval)
+      }
     } else if (approvalType == APSApprovalBy.HOO) {
       throw new ServerBadRequest('Budget Controller approval has been disabled')
     }
@@ -1350,6 +1396,9 @@ ${
           body: reject_note,
         })
       }
+      if (approval === 'rejected') {
+        await this.notifyPaymentRequester(id, 'rejected', reject_note)
+      }
     } else if (approvalType == PRApprovalBy.HOO) {
       await this.prRepository.updatePrBudgetControllerApproval(id, approval, submittedByEmployee[0].id)
     } else if (approvalType == PRApprovalBy.PM) {
@@ -1378,6 +1427,16 @@ ${
           notif_type: NotifType.ACTION_PAYMENT_REQUEST_PAY,
           deleted_at: null,
         })
+      }
+
+      if (approval === 'approved') {
+        await this.mailRepo.sendWorkflowToEmployees(
+          finance_team_members.map((finance) => finance.id),
+          `${this.getPaymentRequestLabel(prDetail.payment_type)} - Siap Dibayar`,
+          `Pengajuan "${prDetail.description || prDetail.request_number}" telah disetujui dan siap diproses pembayaran oleh Finance.`,
+          `https://sim.puskapa.org/dashboard/finance/payment-request/${id}`,
+          'Proses Pembayaran',
+        )
       }
 
       if (approval == 'rejected') {
@@ -1449,6 +1508,9 @@ ${
             program.program_name
           } project as ${internalGeneralManagerApproval ? 'General Manager' : 'Project Manager'}`,
         })
+      }
+      if (approval === 'approved' || approval === 'rejected') {
+        await this.notifyPaymentRequester(id, approval, reject_note)
       }
     } else if (approvalType == PRApprovalBy.BC) {
       throw new ServerBadRequest('Budget Controller approval has been disabled')
@@ -2000,6 +2062,7 @@ ${
   }
 
   async prMarkFinanceCheckedFinish(pr_id: string, user_id: string): Promise<any> {
+    const previousFinanceStatus = (await this.prRepository.getPRById(pr_id))?.finance_checking_process_status
     const employee = await this.emplyeeRepository.getEmployeeByUserId(user_id)
     await this.prRepository.markPaymentRequestCheckingStatus(pr_id, employee[0].id, PRFinanceCheckingStatus.CHECKED)
 
@@ -2027,6 +2090,17 @@ ${
 
     await this.sendPaymentRequestApprovalEmail(pr_id)
 
+    // Notify requester once on Finance verification; leave approval routing untouched.
+    if (previousFinanceStatus !== PRFinanceCheckingStatus.CHECKED && pr.requested_by) {
+      const label = this.getPaymentRequestLabel(pr.payment_type)
+      await this.mailRepo.sendWorkflowToEmployees(
+        [pr.requested_by],
+        `${label} - Berhasil di Verifikasi`,
+        `${label} "${pr.description || pr.request_number}" pada ${program.program_name} telah diverifikasi oleh Finance Checker dan diteruskan untuk proses approval.`,
+        `https://sim.puskapa.org/dashboard/finance/payment-request/${pr.id}`,
+        'Lihat Payment Request',
+      )
+    }
     await this.generalRepo.createLog({
       pr_id: pr_id,
       rf_id: pr.rf_id,
@@ -2095,6 +2169,7 @@ ${
       body: reject_note,
     })
 
+    await this.notifyPaymentRequester(pr_id, 'rejected', reject_note)
     return null
   }
 
@@ -2281,6 +2356,8 @@ ${
           }
           await this.sendPaymentRequestEmailToFinance(inserted.id)
 
+          await this.notifyPaymentRequester(inserted.id, 'submitted')
+
           return inserted.id
         } catch (e) {
           console.log(e)
@@ -2339,6 +2416,7 @@ ${
         })
       }
       await this.sendPaymentRequestEmailToFinance(inserted.id)
+      await this.notifyPaymentRequester(inserted.id, 'submitted')
       return inserted.id
     }
   }

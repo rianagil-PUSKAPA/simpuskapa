@@ -206,6 +206,18 @@ export class ProgramService {
     const program = await this.programRepository.getById(programId)
     await this.notifRepo.resolveNotif(program.submitted_by, programId, NotifType.ACTION_PROGRAM_BUDGET)
 
+    const revisionApprover = program.program_ownership_type === 'INTERNAL'
+      ? program.program_manager
+      : program.grant_manager
+
+    await this.mailRepo.sendWorkflowToEmployees(
+      [revisionApprover],
+      'Permintaan Revisi Budget Needs',
+      `Permintaan revisi Budget Needs untuk "${program.program_name}" telah diajukan.${reviseNote ? ' Catatan: ' + reviseNote : ''}`,
+      `https://sim.puskapa.org/dashboard/project/${programId}?tab=budget-needs`,
+      'Tinjau Revisi Budget',
+    )
+
     await this.generalRepo.createLog({
       pr_id: '',
       rf_id: '',
@@ -905,6 +917,16 @@ export class ProgramService {
       await this.notifRepo.resolveNotif(approverId, program.id, NotifType.APPROVAL_PROGRAM_BUDGET)
     }
 
+    if (status === 'success' && program.submitted_by) {
+      await this.mailRepo.sendWorkflowToEmployees(
+        [program.submitted_by],
+        'Budget Needs Disetujui',
+        `Budget Needs untuk "${program.program_name}" telah disetujui.`,
+        `https://sim.puskapa.org/dashboard/project/${program.id}?tab=budget-needs`,
+        'Lihat Budget Needs',
+      )
+    }
+
     if (status === 'rejected') {
       if (program.submitted_by) {
         await this.notifRepo.create({
@@ -1016,13 +1038,27 @@ export class ProgramService {
     tempVal.set('{{.HEADING}}', `Project ${inserted.program_name} was created by ${employee[0].full_name}`)
     tempVal.set('{{.BODY}}', 'Congratulations, project created')
     tempVal.set('{{.BUTTON_TITLE}}', 'Open Project')
-    tempVal.set('{{.BUTTON_URL}}', `https://staging.sim.puskapa.org/dashboard/project/${inserted.id}`)
+    tempVal.set('{{.BUTTON_URL}}', `https://sim.puskapa.org/dashboard/project/${inserted.id}`)
 
     await this.mailRepo.sendNotificationNoReply(
       `Project ${inserted.program_name} was created by ${employee[0].full_name}`,
       employee[0].user.email,
       tempVal,
     )
+
+    const notificationTarget = inserted.program_ownership_type === 'INTERNAL'
+      ? inserted.program_manager
+      : inserted.grant_manager
+
+    if (notificationTarget && notificationTarget !== employee[0].id) {
+      await this.mailRepo.sendWorkflowToEmployees(
+        [notificationTarget],
+        inserted.program_ownership_type === 'INTERNAL' ? 'Internal Needs Baru' : 'Project Baru',
+        `Project "${inserted.program_name}" telah dibuat oleh ${employee[0].full_name} dan Anda ditetapkan sebagai ${inserted.program_ownership_type === 'INTERNAL' ? 'General Manager' : 'Grant Manager'}.`,
+        `https://sim.puskapa.org/dashboard/project/${inserted.id}`,
+        'Lihat Project',
+      )
+    }
 
     return inserted.id
   }

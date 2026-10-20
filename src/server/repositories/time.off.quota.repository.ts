@@ -114,6 +114,12 @@ export class TimeOffQuotaRepository {
       `
   }
 
+  async findByIdSimple(id: string): Promise<time_off_request | null> {
+    return this.prisma.time_off_request.findFirst({
+      where: { id, deleted_at: null },
+    })
+  }
+
   async getById(id: string, employeeId: string): Promise<time_off_request | null> {
     return this.prisma.$queryRaw`
           SELECT
