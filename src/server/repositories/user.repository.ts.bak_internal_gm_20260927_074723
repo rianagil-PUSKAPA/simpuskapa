@@ -1,0 +1,145 @@
+import { RoleDefinition } from '@/shared/role.access'
+import { Injectable } from '@nestjs/common'
+import { Prisma, users as User, users } from '@prisma/client'
+import { CommonPrismaClient } from '@server/common/prisma.client'
+import axios from 'axios'
+import { GoogleToken, GoogleUserInformation } from '../types/google.token'
+
+@Injectable()
+export class UserRepository {
+  constructor(private prisma: CommonPrismaClient) {}
+
+  // async getAllusers(page: number, perPage: number): Promise<User[] | null> {
+  //   page--
+  //   if (page <= 0) {
+  //     page = 0
+  //   }
+  //   return this.prisma.users.findMany({
+  //     where: { deleted_at: null },
+  //     skip: page * perPage,
+  //     take: perPage,
+  //   })
+  // }
+
+  async getAllusers(): Promise<User[] | null> {
+    return this.prisma.users.findMany({
+      orderBy: {
+        created_at: 'desc',
+      },
+    })
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    return this.prisma.users.findFirst({
+      where: {
+        email: email,
+      },
+    })
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return this.prisma.users.findUnique({
+      where: {
+        id: id,
+      },
+    })
+  }
+
+  async users(params: {
+    skip?: number
+    take?: number
+    cursor?: Prisma.usersWhereUniqueInput
+    where?: Prisma.usersWhereInput
+    orderBy?: Prisma.usersOrderByWithRelationInput
+  }): Promise<User[]> {
+    const { skip, take, cursor, where, orderBy } = params
+    return this.prisma.users.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+    })
+  }
+
+  async createUser(data: Prisma.usersCreateInput): Promise<User> {
+    return this.prisma.users.create({
+      data,
+    })
+  }
+
+  async getUserByRole(role: string): Promise<User> {
+    return this.prisma.users.findFirst({
+      where: {
+        role: {
+          array_contains: role,
+        },
+      },
+    })
+  }
+
+  async updateUser(params: { where: Prisma.usersWhereUniqueInput; data: Prisma.usersUpdateInput }): Promise<User> {
+    const { where, data } = params
+    return this.prisma.users.update({
+      data,
+      where,
+    })
+  }
+
+  async updateUserByID(id: string, data: Prisma.usersUpdateInput): Promise<User> {
+    return this.prisma.users.update({
+      where: { id },
+      data,
+    })
+  }
+
+  async deleteUserById(id: string): Promise<User> {
+    return this.prisma.users.update({
+      where: { id: id },
+      data: { deleted_at: new Date() },
+    })
+  }
+
+  async exchangeGoogleToken(code: string, redirectUri: string): Promise<GoogleToken> {
+    const form = new URLSearchParams()
+    form.append('code', code)
+    form.append('client_id', process.env['GOOGLE_OAUTH_CLIENT_ID'])
+    form.append('client_secret', process.env['GOOGLE_OAUTH_SECRET_KEY'])
+    form.append('redirect_uri', process.env['GOOGLE_REDIRECT_URI'])
+    form.append('grant_type', 'authorization_code')
+
+    const gToken = await axios.post('https://oauth2.googleapis.com/token', form, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
+
+    if (gToken.status != 200) {
+      throw new Error('Failed to login with google acount')
+    }
+
+    return {
+      access_token: gToken.data['access_token'],
+    } as GoogleToken
+  }
+
+  async getGoogleUserInfo(token: string): Promise<GoogleUserInformation> {
+    const gUser = await axios.get(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${token}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (gUser.status != 200) {
+      throw new Error('Failed to login with google acount')
+    }
+
+    return {
+      id: gUser.data['id'],
+      email: gUser.data['email'],
+      name: gUser.data['name'],
+      picture: gUser.data['picture'],
+      verified_email: gUser.data['verified_email'],
+    } as GoogleUserInformation
+  }
+}

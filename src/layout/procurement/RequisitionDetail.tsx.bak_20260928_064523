@@ -1,0 +1,3388 @@
+/* eslint-disable tailwindcss/no-custom-classname */
+import { AvatarLabelGroup } from '@/components/AvatarLabelGroup'
+import { Badge } from '@/components/Badge'
+import { SafeHtml } from '@/components/SafeHtml'
+import { Button } from '@/components/Button'
+import { Drawer } from '@/components/Drawer'
+import { FilePreview } from '@/components/FilePreview'
+import { HorizontalTabs } from '@/components/HorizontalTabs'
+import { Modal } from '@/components/Modal'
+import { AlertCircleIcon } from '@/components/icon/AlertCircleIcon'
+import { AlertTriangleIcon } from '@/components/icon/AlertTriangleIcon'
+import { Briefcase02Icon } from '@/components/icon/Briefcase02Icon'
+import { CalendarIcon } from '@/components/icon/CalendarIcon'
+import { ChevronDownIcon } from '@/components/icon/ChevronDownIcon'
+import { ClockStopwatchIcon } from '@/components/icon/ClockStopwatchIcon'
+import { FileDownload03Icon } from '@/components/icon/FileDownload03Icon'
+import { FilePlus02Icon } from '@/components/icon/FilePlus02Icon'
+import { FileSearch02Icon } from '@/components/icon/FileSearch02Icon'
+import { FolderClosedIcon } from '@/components/icon/FolderClosedIcon'
+import { LinkExternal02Icon } from '@/components/icon/LinkExternal02Icon'
+import { PlusIcon } from '@/components/icon/PlusIcon'
+import { Save01Icon } from '@/components/icon/Save01Icon'
+import { Trash01Icon } from '@/components/icon/Trash01Icon'
+import { XCloseIcon } from '@/components/icon/XCloseIcon'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { PaymentRequestList } from '@/layout/program/PaymentRequestList'
+import { ProjectActivityModified } from '@/layout/program/budget-needs/BudgetNeedsList'
+import { cn } from '@/lib/utils'
+import { useDashboardContext } from '@/providers/DashboardProvider'
+import ProgramRoleAccessControlProvider, {
+  ForbiddenAccessDisplay,
+  accessActionType,
+  programTasks,
+} from '@/providers/ProgramRoleAccessControl'
+import { PRTypes, PaymentIdentifierType } from '@/shared/pr.type'
+import { RFApprovalBy, RFApprovalStatus, RequisitionFormEnum } from '@/shared/rf.type'
+import { RoleDefinition } from '@/shared/role.access'
+import { BucketsUnion, CurrencyUnion } from '@/types/global'
+import { theme } from '@/types/themes'
+import {
+  getBudgetList,
+  getOpenUrl,
+  getPaymentBasedOnBudgetCode,
+  getPerdiemSetting,
+  getVendorDetail,
+  paymentRequestApi,
+  requisitionFormApi,
+  supervisorByEmployee,
+} from '@/utils/apiRequestHelper'
+import {
+  calculatePureTotalBudget,
+  calculateTotalBudget,
+  calculateUnitCostPerActivity,
+  copyCheckedBudgetsWithActivities,
+  formatCurrency,
+  isMoreThan24Hours,
+  requisitionType,
+} from '@/utils/globalHelper'
+import saveExcelRf from '@/utils/saveExcelRf'
+import { Menu, Transition } from '@headlessui/react'
+import * as SheetPrimitive from '@radix-ui/react-dialog'
+import { Log } from '@sdk'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import utc from 'dayjs/plugin/utc'
+import { PlaneIcon } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { Fragment, useEffect, useState } from 'react'
+import { SubmitHandler, useForm } from 'react-hook-form'
+import { toast } from 'react-toastify'
+import {
+  ActivityBudgetList,
+  PaymentRequestSimple,
+  ProgramDetail,
+  RFApprovalStatusRequest,
+  RequisitionFormDetail,
+  VendorDto,
+} from 'sdk/api'
+import useSWRMutation from 'swr/mutation'
+
+dayjs.extend(relativeTime)
+dayjs.extend(utc)
+
+type Props = {
+  programDetail: ProgramDetail
+  requisitionFormDetail: RequisitionFormDetailImprovement
+  rfType:
+    | RequisitionFormEnum.PROCUREMENT
+    | RequisitionFormEnum.PERSONAL_HIRE
+    | RequisitionFormEnum.TRAVEL
+    | RequisitionFormEnum.STAFF_COST
+  programId: string
+  projectId: string
+  rfId: string
+  buttonDisabled: boolean
+  buttonHidden: boolean
+  requisitionFormLogs: Log[]
+  travellerPerdiemTax?: number
+  isAllowedToCloseRF?: boolean
+}
+
+export type RequisitionFormDetailImprovement = RequisitionFormDetail & {
+  rf_attributes: {
+    employee_id: string
+    additional_data: {
+      location: string
+      notes: string
+      tor_path: string[]
+      invitation_path: string[]
+      travel_organizer: string
+      assignment_letter_path: string[]
+    }
+    who_traveling: {
+      id: string
+      name: string
+      pass_photo: string[]
+    }
+    notes: string
+    type_hire: string
+    vendor_id: string
+    other_docs: string[]
+    background_docs: string[]
+    offer_page_docs: string[]
+    primary_division: string
+    hire_process_docs: string[]
+  }
+  projects: ProjectType[]
+}
+
+export type ProjectType = {
+  id: string
+  code: string
+  description: string
+  ordering_seq: number
+  activities: Activity[]
+  is_checked: boolean
+  is_disabled: boolean
+  remaining?: number
+}
+
+export type Activity = {
+  id: string
+  ordering_seq: number
+  description: string
+  code: string
+  budgets: Budget[]
+  is_checked: boolean
+}
+
+export type Budget = {
+  recommended_vendor: string
+  qty: number
+  pkg_qty: number
+  unit_cost_value: number
+  id: string
+  ordering_seq: number
+  code: string
+  description: string
+  vendor_category_id: string
+  unit: string
+  pkg_unit: string
+  unit_cost: string
+  vendor_category_information: VendorCategoryInformation
+  is_checked: boolean
+  remaining: number
+  pending_requested: number
+  paid_total: number
+  total_expenses?: number
+  total_prs?: number
+} & ActivityBudgetList
+
+export type VendorCategoryInformation = {
+  id: string
+  name: string
+  action_by: string
+  vendor_type: VendorType
+}
+
+export type VendorType = {
+  id: string
+  name: string
+}
+
+type ModalStatement = {
+  paymentRequest: boolean
+  doublePerdiem: boolean
+  deleteConfirmationModal: boolean
+  reject: boolean
+  closeRfConfirmationModal: boolean
+}
+
+export const RequisitionDetail = ({
+  requisitionFormDetail,
+  programDetail,
+  rfType,
+  programId,
+  projectId,
+  rfId,
+  buttonDisabled,
+  buttonHidden,
+  requisitionFormLogs,
+  travellerPerdiemTax,
+  isAllowedToCloseRF,
+}: Props) => {
+  const {
+    handleRequisitionBudgetToPaymentRequest,
+    handleProjectToPaymentRequest,
+    handlePaymentRequestIdentifier,
+    userLoggedinInformation,
+    isInternal,
+  } = useDashboardContext()
+
+  // console.log('requisitionFormDetail', requisitionFormDetail)
+  // console.log('programDetail', programDetail)
+  // console.log('rfType', rfType)
+  // console.log('programId', programId)
+  // console.log('projectId', projectId)
+  // console.log('rfId', rfId)
+
+  const router = useRouter()
+
+  const [travelerAvatar, setTravelerAvatar] = useState(`${process.env.NEXT_PUBLIC_ASSETS}/svg/avatar-placeholder.svg`)
+  const [requestedByAvatar, setReqestedByAvatar] = useState(
+    `${process.env.NEXT_PUBLIC_ASSETS}/svg/avatar-placeholder.svg`,
+  )
+  const [programManagerAvatar, setProgramManagerAvatar] = useState(
+    `${process.env.NEXT_PUBLIC_ASSETS}/svg/avatar-placeholder.svg`,
+  )
+  const [actionByAvatar, setActionByAvatar] = useState(`${process.env.NEXT_PUBLIC_ASSETS}/svg/avatar-placeholder.svg`)
+  const [supervisorAvatar, setSupervisorAvatar] = useState(
+    `${process.env.NEXT_PUBLIC_ASSETS}/svg/avatar-placeholder.svg`,
+  )
+  const [travelInformationDrawer, setTravelInformationDrawer] = useState(false)
+  const [viewLogActivityDrawer, setViewLogActivityDrawer] = useState(false)
+  const [personalHireDrawer, setPersonalHireDrawer] = useState(false)
+  const [totalRemainingRf, setTotalRemainingRf] = useState(0)
+  const [projectBudgets, setProjectBudgets] = useState<ProjectType[]>([])
+  const [projectBudgetsModified, setProjectBudgetsModified] = useState<ProjectType[]>([])
+  const [isOpenModal, setIsOpenModal] = useState<ModalStatement | null>({
+    paymentRequest: false,
+    doublePerdiem: false,
+    deleteConfirmationModal: false,
+    reject: false,
+    closeRfConfirmationModal: false,
+  })
+  const [isTravelInformationStatement, setIsTravelInformationStatement] = useState<{
+    ACTION_BY_OPERATIONAL: boolean
+    ACTION_BY_TRAVELLER: boolean
+  } | null>({
+    ACTION_BY_OPERATIONAL: false,
+    ACTION_BY_TRAVELLER: false,
+  })
+  const [vendorDetail, setVendorDetail] = useState<VendorDto | null>(null)
+
+  // Tab configuration object for better maintainability
+  const TAB_CONFIG = {
+    'detail-rf': { index: 0, slug: 'detail-rf' },
+    'payment-request': { index: 1, slug: 'payment-request' },
+    'advance-payment-request': { index: 2, slug: 'advance-payment-request' },
+    'advance-payment-statememt': {
+      index: 3,
+      slug: 'advance-payment-statememt',
+    },
+    'advance-perdiem-fee': { index: 4, slug: 'advance-perdiem-fee' },
+    'travel-expenses': { index: 5, slug: 'travel-expenses' },
+  } as const
+
+  type TabSlug = keyof typeof TAB_CONFIG
+
+  // Helper functions
+  const getIndexFromTab = (tab: string | string[] | undefined): number => {
+    const tabKey = (tab || 'detail-rf') as TabSlug
+    return TAB_CONFIG[tabKey]?.index ?? 0
+  }
+
+  const getTabFromIndex = (indexValue: number): TabSlug => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const entry = Object.entries(TAB_CONFIG).find(([_, config]) => config.index === indexValue)
+    return (entry?.[0] as TabSlug) ?? 'detail-rf'
+  }
+
+  // Derive index from URL query param (single source of truth)
+  const index = getIndexFromTab(router.query.tab)
+
+  const [isApprovedByPMHOO, setIsApprovedByPMHOO] = useState(false)
+  const [loadingButtonStatement, setLoadingButtonStatement] = useState<{
+    'payment-request': boolean
+    'advance-payment-request': boolean
+    'advance-perdiem-fee': boolean
+    'travel-expense': boolean
+    'advance-payment-statement': boolean
+    exportExcel: boolean
+    approve: boolean
+    reject: boolean
+    deleteRf: boolean
+    closeRF: boolean
+  }>({
+    [PRTypes.PR]: false,
+    [PRTypes.APR]: false,
+    [PRTypes.APF]: false,
+    [PRTypes.TE]: false,
+    [PRTypes.APS]: false,
+    exportExcel: false,
+    approve: false,
+    reject: false,
+    deleteRf: false,
+    closeRF: false,
+  })
+
+  const { data: supervisorData, trigger: supervisorTrigger } = useSWRMutation(
+    [requisitionFormDetail ? requisitionFormDetail?.requested_by.id : null],
+    ([id]) => supervisorByEmployee(id),
+  )
+
+  const { data: perdiemSettingData, trigger: perdiemSettingTrigger } = useSWRMutation(`${programId}`, getPerdiemSetting)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RFApprovalStatusRequest>()
+
+  const openTravelInformationDrawer = () => {
+    setTravelInformationDrawer(true)
+  }
+  const openPersoanlHireInformationDrawer = () => {
+    setPersonalHireDrawer(true)
+  }
+  const openViewLogActivityDrawer = () => {
+    setViewLogActivityDrawer(true)
+  }
+
+  const rejectHandler: SubmitHandler<RFApprovalStatusRequest> = async (input) => {
+    setLoadingButtonStatement((prev) => ({ ...prev, reject: true }))
+
+    const approvalResponse = requisitionFormApi.rFControllerApproveRF(programId, rfId, projectId, {
+      approved_by: RFApprovalBy.BY_PROGRAM_MANAGER.toString(),
+      status: 'rejected',
+      rejection_note: input.rejection_note,
+    } as RFApprovalStatusRequest)
+
+    toast.promise(approvalResponse, {
+      pending: 'Rejecting requisition form',
+      success: 'Requisition form rejected',
+      error: 'Promise rejected 🤯',
+    })
+
+    approvalResponse.then(() => {
+      router.replace(router.asPath)
+      closeRejectConfirmationModal()
+    })
+
+    approvalResponse.finally(() => {
+      setLoadingButtonStatement((prev) => ({ ...prev, reject: false }))
+    })
+  }
+
+  const saveExcel = () => {
+    saveExcelRf(
+      setLoadingButtonStatement,
+      programDetail,
+      requisitionFormDetail,
+      rfType,
+      vendorDetail,
+      supervisorData,
+      isInternal,
+      projectBudgetsModified,
+      userLoggedinInformation,
+      isTravelInformationStatement,
+      programId,
+      rfId,
+      perdiemSettingData,
+      travellerPerdiemTax,
+    )
+  }
+
+  /**
+   * Handles the payment request.
+   *
+   * @param {string} parameter - The parameter that determines the type of payment request.
+   *    Possible values are 'PR' (Payment Request), 'APR' (Advance Payment Request), or 'TE' (Travel Expense).
+   */
+  const handlePaymentRequest = (parameter: PaymentIdentifierType) => {
+    let filteredActivities = null
+
+    if (parameter === PRTypes.APF) {
+      filteredActivities = projectBudgetsModified
+        .flatMap((project) =>
+          project.activities
+            .filter((activity) => activity.budgets.some((budget) => budget.id))
+            .map((activity) => ({
+              ...activity,
+              budgets: activity.budgets.filter(
+                (budget) =>
+                  budget.vendor_category_information.name === 'Overseas Perdiem' ||
+                  budget.vendor_category_information.name === 'Normal Perdiem' ||
+                  budget.vendor_category_information.name === 'Remote Area Perdiem',
+              ),
+            })),
+        )
+        .filter((project) => project.budgets.length > 0)
+    }
+    if (parameter === PRTypes.TE) {
+      filteredActivities = projectBudgetsModified.flatMap((project) =>
+        project.activities
+          .filter((activity) => activity.budgets.some((budget) => budget.id))
+          .map((activity) => ({
+            ...activity,
+            budgets: activity.budgets.filter((budget) => budget.id),
+          })),
+      )
+    }
+    if (parameter === PRTypes.PR || parameter === PRTypes.APR) {
+      filteredActivities = copyCheckedBudgetsWithActivities(projectBudgetsModified)
+    }
+
+    const getTypesOfBudget = filteredActivities.map((item) =>
+      item.budgets.map((budget) => budget.vendor_category_information.vendor_type.name),
+    )
+    const getCategoriesOfBudget = filteredActivities.map((item) =>
+      item.budgets.map((budget) => budget.vendor_category_information.name),
+    )
+
+    const flattenTypes = getTypesOfBudget.flat()
+    const flattenCategories = getCategoriesOfBudget.flat()
+
+    const sampleElement = flattenTypes[0]
+
+    const isAllSameValueType = flattenTypes.every((element) => element === sampleElement)
+
+    const perdiemCollections = flattenCategories.filter(
+      (element) => element === 'Overseas Perdiem' || element === 'Normal Perdiem' || element === 'Remote Area Perdiem',
+    )
+
+    let projectWithChecked = null
+
+    if (parameter === PRTypes.APF || parameter === PRTypes.TE) {
+      projectWithChecked = projectBudgetsModified.find((item) =>
+        item.activities.some((activity) => activity.budgets.some((budget) => budget.id)),
+      )
+
+      if (parameter === PRTypes.TE && perdiemCollections.length > 1) {
+        setIsOpenModal((prev: ModalStatement) => ({
+          ...prev,
+          doublePerdiem: true,
+        }))
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        return false
+      }
+
+      if (parameter === PRTypes.TE) {
+        const flattenExistingTEBudget = projectWithChecked.activities
+          .map((activity) =>
+            activity.budgets.filter((budget) => budget.vendor_category_information.action_by === 'ACTION_BY_TRAVELLER'),
+          )
+          .flat()
+
+        const totallyPaidStatements = flattenExistingTEBudget.map((budget) => budget.totally_paid)
+
+        // Will show warning if all budget was paid
+        if (!totallyPaidStatements.includes(false)) {
+          toast.warning("Can't create travel expense, because all budget was paid", {
+            icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+            autoClose: 10000,
+          })
+          setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+          return false
+        }
+      }
+    }
+
+    if (parameter === PRTypes.PR || parameter === PRTypes.APR) {
+      if (filteredActivities.length === 0) {
+        toast.warning('Please select at least one budget activity', {
+          autoClose: 10000,
+        })
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        return false
+      }
+
+      projectWithChecked = projectBudgetsModified.find((item) =>
+        item.activities.some((activity) => activity.budgets.some((budget) => budget.is_checked)),
+      )
+      if (!isAllSameValueType) {
+        setIsOpenModal((prev: ModalStatement) => ({
+          ...prev,
+          paymentRequest: true,
+        }))
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        return false
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { activities, ...itemWithoutActivities } = projectWithChecked
+    // return false
+
+    handleRequisitionBudgetToPaymentRequest(filteredActivities)
+    handleProjectToPaymentRequest(itemWithoutActivities)
+
+    switch (parameter) {
+      case PRTypes.PR:
+        handlePaymentRequestIdentifier('PR')
+        router.push(`/dashboard/finance/payment-request/pr/${programId}/${projectId}/${rfId}`)
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        break
+      case PRTypes.APR:
+        handlePaymentRequestIdentifier('APR')
+        router.push(`/dashboard/finance/payment-request/apr/${programId}/${projectId}/${rfId}`)
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        break
+      case PRTypes.APF:
+        const isPerdiemExist = filteredActivities.map((activity) =>
+          activity.budgets.some(
+            (budget) =>
+              budget.vendor_category_information.name === 'Overseas Perdiem' ||
+              budget.vendor_category_information.name === 'Normal Perdiem' ||
+              budget.vendor_category_information.name === 'Remote Area Perdiem',
+          ),
+        )
+
+        const isPerdiemExistValue = isPerdiemExist.some((item: boolean) => item === true)
+
+        if (!isPerdiemExistValue) {
+          toast.warning("Perdiem category not found, Can't create advance perdiem fee without it")
+          setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+          return false
+        }
+
+        handlePaymentRequestIdentifier('APF')
+        router.push(`/dashboard/finance/payment-request/apf/${programId}/${projectId}/${rfId}`)
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        break
+      case PRTypes.TE:
+        handlePaymentRequestIdentifier('TE')
+        router.push(`/dashboard/finance/payment-request/te/${programId}/${projectId}/${rfId}`)
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        break
+      default:
+        break
+    }
+  }
+
+  const handleActivityChange = (activityId, isChecked) => {
+    const newBudgetNeeds = projectBudgets.map((item) => {
+      if (item.activities.some((activity) => activity.id === activityId)) {
+        item.activities = item.activities.map((activity) => {
+          if (activity.id === activityId) {
+            activity.is_checked = isChecked
+            activity.budgets = activity.budgets.map((budget) => {
+              budget.is_checked = isChecked
+              return budget
+            })
+          }
+          return activity
+        })
+      }
+      return item
+    })
+    setProjectBudgets(newBudgetNeeds)
+  }
+
+  const handleBudgetChange = (activityId, budgetId, isChecked) => {
+    let isAllChecked = true
+    const newBudgetNeeds = projectBudgets.map((item) => {
+      if (item.activities.some((activity) => activity.id === activityId)) {
+        item.activities = item.activities.map((activity) => {
+          if (activity.id === activityId) {
+            activity.budgets = activity.budgets.map((budget) => {
+              if (budget.id === budgetId) {
+                budget.is_checked = isChecked
+              }
+              if (!budget.is_checked) {
+                isAllChecked = false
+              }
+              return budget
+            })
+            activity.is_checked = isAllChecked
+          }
+          return activity
+        })
+      }
+      return item
+    })
+    setProjectBudgets(newBudgetNeeds)
+  }
+
+  const handleIndexTabs = (value: number) => {
+    const tab = getTabFromIndex(value)
+    router.push({
+      pathname: router.pathname,
+      query: {
+        ...router.query,
+        tab,
+      },
+    })
+  }
+
+  const openDeleteConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      deleteConfirmationModal: true,
+    }))
+  }
+
+  const closeDeleteConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      deleteConfirmationModal: false,
+    }))
+  }
+
+  const showCLoseRfConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      closeRfConfirmationModal: true,
+    }))
+  }
+
+  const hideCloseRfConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      closeRfConfirmationModal: false,
+    }))
+  }
+
+  const openRejectConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      reject: true,
+    }))
+  }
+
+  const closeRejectConfirmationModal = () => {
+    setIsOpenModal((prev: ModalStatement) => ({
+      ...prev,
+      reject: false,
+    }))
+  }
+
+  const deletePayment = () => {
+    setLoadingButtonStatement((prev) => ({ ...prev, deleteRF: true }))
+
+    const deletedRF = requisitionFormApi.rFControllerDeleteRFById(
+      programId,
+      requisitionFormDetail.projects[0].id,
+      requisitionFormDetail.id,
+    )
+
+    toast.promise(deletedRF, {
+      pending: 'Deleting requisition detail',
+      success: 'Requisition deleted successfully',
+      error: 'Promise rejected 🤯',
+    })
+
+    deletedRF.finally(() => {
+      router.replace('/dashboard/procurement')
+
+      setTimeout(() => {
+        setLoadingButtonStatement((prev) => ({ ...prev, deleteRF: false }))
+      }, 3000)
+    })
+  }
+
+  const closeRfAction = () => {
+    setLoadingButtonStatement((prev) => ({ ...prev, closeRF: true }))
+
+    if (!isAllowedToCloseRF) {
+      toast.error('You are not allowed to close this requisition form, because there are unpaid payment')
+      setLoadingButtonStatement((prev) => ({ ...prev, closeRF: false }))
+      return false
+    }
+
+    const closeRF = requisitionFormApi.rFControllerCloseRequisitionForm(
+      programId,
+      requisitionFormDetail.projects[0].id,
+      requisitionFormDetail.id,
+    )
+
+    toast.promise(closeRF, {
+      pending: 'Closing requisition form',
+      success: 'Requisition form closed successfully',
+      error: 'Promise rejected 🤯',
+    })
+
+    closeRF.finally(() => {
+      supervisorTrigger()
+      perdiemSettingTrigger()
+
+      setTimeout(() => {
+        setLoadingButtonStatement((prev) => ({ ...prev, closeRF: false }))
+        hideCloseRfConfirmationModal()
+        router.replace(router.asPath)
+      }, 3000)
+    })
+  }
+
+  const approveRequisitionForm = async (
+    programId: string,
+    projectId: string,
+    rfId: string,
+    status: RFApprovalStatus,
+  ): Promise<void> => {
+    if (status === RFApprovalStatus.APPROVED) {
+      setLoadingButtonStatement((prev) => ({ ...prev, approve: true }))
+    }
+    if (status === RFApprovalStatus.REJECTED) {
+      setLoadingButtonStatement((prev) => ({ ...prev, reject: true }))
+    }
+
+    const approvalRequest = requisitionFormApi.rFControllerApproveRF(programId, rfId, projectId, {
+      approved_by: RFApprovalBy.BY_PROGRAM_MANAGER.toString(),
+      status: status.toString(),
+    } as RFApprovalStatusRequest)
+
+    toast.promise(approvalRequest, {
+      pending: `Processing Requisition Form Approval`,
+      success: `Form Approval Done by ${isInternal ? 'General Manager' : 'Project Manager'}`,
+      error: 'Failed to Approve Requisition Form',
+    })
+
+    if (status === RFApprovalStatus.APPROVED) {
+      setLoadingButtonStatement((prev) => ({ ...prev, approve: false }))
+    }
+    if (status === RFApprovalStatus.REJECTED) {
+      setLoadingButtonStatement((prev) => ({ ...prev, reject: false }))
+    }
+
+    setTimeout(() => {
+      router.replace(router.asPath)
+    }, 500)
+  }
+
+  const paymentRequestValidation = async (parameter: PaymentIdentifierType) => {
+    setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: true }))
+
+    if (parameter === PRTypes.APR && rfType === RequisitionFormEnum.PERSONAL_HIRE) {
+      toast.error("Personnel hire can't create advance payment request", {
+        toastId: 'toast-ph-error',
+      })
+      setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+      return false
+    }
+
+    const [getListAPRRes, getListPRRes, getListAPFRes, getListAPSRes, getListTERes] = await Promise.all([
+      paymentRequestApi.pRControllerGetListPaymentRequest(programId, rfId, PRTypes.APR, undefined, undefined),
+      paymentRequestApi.pRControllerGetListPaymentRequest(programId, rfId, PRTypes.PR, undefined, undefined),
+      paymentRequestApi.pRControllerGetListPaymentRequest(programId, rfId, PRTypes.APF, undefined, undefined),
+      paymentRequestApi.pRControllerGetListPaymentRequest(programId, rfId, PRTypes.APS, undefined, undefined),
+      paymentRequestApi.pRControllerGetListPaymentRequest(programId, rfId, PRTypes.TE, undefined, undefined),
+    ])
+
+    const prListResults = getListAPRRes.data.data
+    const aprListResults = getListPRRes.data.data
+    const apfListResults = getListAPFRes.data.data
+    const apsListResults = getListAPSRes.data.data
+    const teListResults = getListTERes.data.data
+
+    const mergePaymentResults = [
+      ...prListResults,
+      ...aprListResults,
+      ...apfListResults,
+      ...apsListResults,
+      ...teListResults,
+    ]
+
+    const getListPaymentIds = mergePaymentResults.map((item: PaymentRequestSimple) => item.id)
+
+    let selectedPaymentCode = []
+
+    // Selected budgets
+    if (parameter === PRTypes.APF || parameter === PRTypes.TE) {
+      selectedPaymentCode = projectBudgets.flatMap((project) => {
+        return project.activities.flatMap((activity) => {
+          return activity.budgets
+            .flatMap((budget) => {
+              return budget.code
+            })
+            .flat()
+        })
+      })
+    } else {
+      selectedPaymentCode = projectBudgets.flatMap((project) => {
+        return project.activities.flatMap((activity) => {
+          return activity.budgets
+            .filter((budget) => budget.is_checked)
+            .flatMap((budget) => {
+              return budget.code
+            })
+            .flat()
+        })
+      })
+    }
+
+    const paymentDetails = await Promise.all(
+      getListPaymentIds.map(async (id: string) => {
+        const paymentDetailRes = await paymentRequestApi.pRControllerGetDetailPaymentRequest(id)
+        const paymentDetail = paymentDetailRes.data.data
+
+        return paymentDetail.projects
+          .map((project) =>
+            project.activities.map((activity) =>
+              activity.budgets.map((budget) => ({
+                ...budget,
+                paid_at: paymentDetail.paid_at,
+                pr_number: paymentDetail.number,
+              })),
+            ),
+          )
+          .flat()
+      }),
+    )
+
+    const flattenPaymentDetails = [].concat(...[].concat(...paymentDetails))
+
+    const filterPaymentDetails = flattenPaymentDetails.filter((payment) =>
+      selectedPaymentCode.includes(payment['code']),
+    )
+
+    const aprList = filterPaymentDetails.filter((item) => item.pr_number.includes('APR'))
+    const apsList = filterPaymentDetails.filter((item) => item.pr_number.includes('APS'))
+    const apfList = filterPaymentDetails.filter((item) => item.pr_number.includes('APF'))
+    const teList = filterPaymentDetails.filter((item) => item.pr_number.includes('TE'))
+
+    // Avoid create APR (again) if budget have an APR, if have no APS yet consider to create an APS, if has an APS consider to create PR
+    if (aprList.length > 0 && parameter === PRTypes.APR) {
+      if (apsList.length === 0) {
+        aprList.map((payment) => {
+          toast.warning(
+            `This budget code ${payment.code.replace(
+              /\.(\d+)$/,
+              '-$1',
+            )} already has an APR but has no APS yet, create APS instead.`,
+            {
+              icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+              autoClose: 10000,
+            },
+          )
+        })
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        return false
+      } else {
+        // Has APS
+        aprList.map((payment) => {
+          toast.warning(
+            `This budget code ${payment.code.replace(
+              /\.(\d+)$/,
+              '-$1',
+            )} already has an APR and APS, create PR instead.`,
+            {
+              icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+              autoClose: 10000,
+            },
+          )
+        })
+        return false
+      }
+    }
+
+    // Avoid create PR if user have APR and not finished yet until APS
+    if (apsList.length !== aprList.length && parameter === PRTypes.PR) {
+      aprList.map((payment) => {
+        toast.warning(
+          `This budget code ${payment.code.replace(
+            /\.(\d+)$/,
+            '-$1',
+          )} has an APR, but has no APS yet. Create APS for it instead`,
+          {
+            icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+            autoClose: 10000,
+          },
+        )
+      })
+      setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+      return false
+    }
+
+    // Avoid create APF if in current RF (TR) has a APF (Only one APF allowed)
+    if (apfList.length > 0 && parameter === PRTypes.APF) {
+      toast.warning(
+        `You have an APF at ${apfList[0].pr_number.toUpperCase()}, only one APF allowed in current Travel Request`,
+        {
+          icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+          autoClose: 10000,
+        },
+      )
+      setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+      return false
+    }
+
+    // Avoid create TE if in current RF (TR) has a TE (Only one TE allowed)
+    if (teList.length > 0 && parameter === PRTypes.TE) {
+      toast.warning(
+        `You have an TE at ${teList[0].pr_number.toUpperCase()}, only one TE allowed in current Travel Request`,
+        {
+          icon: <AlertTriangleIcon className="h-5 w-5 stroke-warning-500" />,
+          autoClose: 10000,
+        },
+      )
+      setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+      return false
+    }
+
+    // Avoid create PR/APR with have another unfinished PR/APR in some budget code in current RF
+    for (let index = 0; index < filterPaymentDetails.length; index++) {
+      const payment = filterPaymentDetails[index]
+      if (payment.paid_at === null && payment.pr_number.includes('APR')) {
+        toast.error(
+          `You have unfinished payment with current budget at payment code ${payment['pr_number'].toUpperCase()}`,
+        )
+        setLoadingButtonStatement((prev) => ({ ...prev, [parameter]: false }))
+        return false
+      }
+    }
+
+    switch (parameter) {
+      case PRTypes.PR:
+        handlePaymentRequest(PRTypes.PR)
+        break
+      case PRTypes.APR:
+        handlePaymentRequest(PRTypes.APR)
+        break
+      case PRTypes.APF:
+        handlePaymentRequest(PRTypes.APF)
+        break
+      case PRTypes.TE:
+        handlePaymentRequest(PRTypes.TE)
+        break
+      default:
+        break
+    }
+  }
+
+  useEffect(() => {
+    if (requisitionFormDetail) {
+      getOpenUrl(
+        requisitionFormDetail?.requested_by.pass_photo[0]?.split('/')[0] as BucketsUnion,
+        requisitionFormDetail?.requested_by.pass_photo[0]?.split('/')[1],
+        3600 * 24,
+      )
+        .then((file) => {
+          setReqestedByAvatar(file.url)
+        })
+        .catch((err) => console.error(err))
+
+      getOpenUrl(
+        requisitionFormDetail?.action_by.pass_photo[0]?.split('/')[0] as BucketsUnion,
+        requisitionFormDetail?.action_by.pass_photo[0]?.split('/')[1],
+        3600 * 24,
+      )
+        .then((file) => {
+          setActionByAvatar(file.url)
+        })
+        .catch((err) => console.error(err))
+      if (rfType === RequisitionFormEnum.TRAVEL && requisitionFormDetail?.rf_attributes?.who_traveling.pass_photo) {
+        getOpenUrl(
+          requisitionFormDetail?.rf_attributes?.who_traveling.pass_photo[0]?.split('/')[0] as BucketsUnion,
+          requisitionFormDetail?.rf_attributes?.who_traveling.pass_photo[0]?.split('/')[1],
+          3600 * 24,
+        )
+          .then((file) => {
+            setTravelerAvatar(file.url)
+          })
+          .catch((err) => console.error(err))
+      }
+    }
+    if (!isInternal) {
+      if (programDetail) {
+        getOpenUrl(
+          (programDetail?.program_ownership_type === 'INTERNAL'
+            ? (programDetail as any)?.general_manager?.pass_photo_path?.[0]
+            : programDetail?.program_manager?.pass_photo_path?.[0]
+          )?.split('/')[0] as BucketsUnion,
+          (programDetail?.program_ownership_type === 'INTERNAL'
+            ? (programDetail as any)?.general_manager?.pass_photo_path?.[0]
+            : programDetail?.program_manager?.pass_photo_path?.[0]
+          )?.split('/')[1],
+          3600 * 24,
+        )
+          .then((file) => {
+            setProgramManagerAvatar(file.url)
+          })
+          .catch((err) => console.error(err))
+      }
+    }
+  }, [requisitionFormDetail, programDetail, isInternal])
+
+  useEffect(() => {
+    if (requisitionFormDetail?.rf_attributes?.vendor_id) {
+      const exec = async () => {
+        const vendorDetailRes = await getVendorDetail(requisitionFormDetail?.rf_attributes.vendor_id)
+        const vendorDetail = vendorDetailRes
+        setVendorDetail(vendorDetail)
+      }
+      exec()
+    }
+  }, [requisitionFormDetail?.rf_attributes?.vendor_id])
+
+  useEffect(() => {
+    const initialProjectBudgets = requisitionFormDetail?.projects?.map((project) => ({
+      ...project,
+      is_checked: false,
+      is_disabled: false,
+      activities: project.activities?.map((activity) => ({
+        ...activity,
+        is_checked: false,
+        budgets: activity.budgets.map((budget) => ({
+          ...budget,
+          is_checked: false,
+        })),
+      })),
+    }))
+
+    setProjectBudgets(initialProjectBudgets as any)
+
+    // Check is Project Manager has approved the RF? For conditional horizonal tabs
+    if (requisitionFormDetail?.program_manager_approval_status == RFApprovalStatus.APPROVED) {
+      setIsApprovedByPMHOO(true)
+    } else {
+      setIsApprovedByPMHOO(false)
+    }
+  }, [requisitionFormDetail])
+
+  // Detect if budget from traveller or action_by is empty
+  useEffect(() => {
+    if (rfType !== RequisitionFormEnum.TRAVEL) return
+
+    if (projectBudgets?.length > 0) {
+      const actionByOperational = projectBudgets?.map((project) =>
+        project.activities?.map((activity) =>
+          activity.budgets.filter((budget) => budget.vendor_category_information.action_by === 'ACTION_BY_OPERATIONAL'),
+        ),
+      )
+      const actionByTraveller = projectBudgets?.map((project) =>
+        project.activities?.map((activity) =>
+          activity.budgets.filter((budget) => budget.vendor_category_information.action_by === 'ACTION_BY_TRAVELLER'),
+        ),
+      )
+
+      const flattenOperational = [].concat(...actionByOperational)
+      const flattenTraveller = [].concat(...actionByTraveller)
+
+      if ([].concat(...flattenOperational).length === 0) {
+        setIsTravelInformationStatement((prev) => ({
+          ...prev,
+          ACTION_BY_OPERATIONAL: true,
+        }))
+      }
+
+      if ([].concat(...flattenTraveller).length === 0) {
+        setIsTravelInformationStatement((prev) => ({
+          ...prev,
+          ACTION_BY_TRAVELLER: true,
+        }))
+      }
+    }
+  }, [projectBudgets])
+
+  useEffect(() => {
+    const exec = async () => {
+      const [
+        advancePaymentRequestExist,
+        normalPaymentRequestExist,
+        advancePaymentStatementRequestExist,
+        advancePerdiemFeeExist,
+        travelExpenseExist,
+        budgetList,
+      ] = await Promise.all([
+        getPaymentBasedOnBudgetCode(
+          programId,
+          rfId,
+          PRTypes.APR,
+          projectBudgets as unknown as ProjectActivityModified[],
+        ),
+        getPaymentBasedOnBudgetCode(
+          programId,
+          rfId,
+          PRTypes.PR,
+          projectBudgets as unknown as ProjectActivityModified[],
+        ),
+        getPaymentBasedOnBudgetCode(
+          programId,
+          rfId,
+          PRTypes.APS,
+          projectBudgets as unknown as ProjectActivityModified[],
+        ),
+        getPaymentBasedOnBudgetCode(
+          programId,
+          rfId,
+          PRTypes.APF,
+          projectBudgets as unknown as ProjectActivityModified[],
+        ),
+        getPaymentBasedOnBudgetCode(
+          programId,
+          rfId,
+          PRTypes.TE,
+          projectBudgets as unknown as ProjectActivityModified[],
+        ),
+        getBudgetList(programId),
+      ])
+
+      let travelOthers = []
+
+      const result = projectBudgets.map((project) => ({
+        ...project,
+        activities: project.activities?.map((activity) => ({
+          ...activity,
+          budgets: activity.budgets.map((budget) => {
+            // ✅
+            const totalNormalPayments =
+              normalPaymentRequestExist.map(
+                (innerbudget) => innerbudget.find((item) => budget.code === item.code)?.total_prs,
+              )[0] || 0
+            // ✅
+            const totalPaymentFromAPS =
+              advancePaymentStatementRequestExist.map(
+                (innerbudget) => innerbudget.find((item) => budget.code === item.code)?.total_prs,
+              )[0] || 0
+            // ✅
+            const pureAPR =
+              advancePaymentRequestExist.map(
+                (innerbudget) => innerbudget.find((item) => budget.code === item.code)?.advance_payment_total,
+              )[0] || 0
+
+            // ✅
+            const totalAPF =
+              advancePerdiemFeeExist.map(
+                (innerbudget) => innerbudget.find((item) => budget.code === item.code)?.advance_payment_total,
+              )[0] || 0
+            // ✅
+            const totalTravelExpense =
+              travelExpenseExist.map(
+                (innerbudget) => innerbudget.find((item) => budget.code === item.code)?.travel_expenses || 0,
+              )[0] || 0
+
+            const otherBudget =
+              travelExpenseExist.map((innerbudget) =>
+                innerbudget.find((item) => item.vendor_category === 'Other'),
+              )[0] || 0
+
+            if (otherBudget) {
+              const dynamicOthersFromTravelExpense = budgetList.projects
+                .flatMap((project) => project.activities.flatMap((activity) => activity.budgets))
+                .filter(
+                  (budget) =>
+                    budget.vendor_category_information.name === 'Other' &&
+                    budget.code === otherBudget.code &&
+                    budget.id !== otherBudget.id,
+                )
+              travelOthers = dynamicOthersFromTravelExpense
+            }
+            const totalRealPRS =
+              totalTravelExpense +
+              (totalPaymentFromAPS ? totalPaymentFromAPS : pureAPR) +
+              totalNormalPayments +
+              totalAPF
+
+            return {
+              ...budget,
+              advance_payment_total: 0,
+              total_prs: totalRealPRS,
+              // 0 or minus will be considered as totally paid (minus mean over budget)
+              totally_paid: budget.qty * budget.pkg_qty * budget.unit_cost_value - totalRealPRS <= 0 ? true : false,
+            }
+          }),
+        })),
+      }))
+
+      const code = travelOthers[0]?.code
+      const [alphabet, firstIndexing] = code ? code.split('.') : []
+      const finalCode = `${alphabet}.${firstIndexing}`
+
+      const finalResultWithDynamicOthers = result.map((project) => {
+        return {
+          ...project,
+          activities: project.activities.map((activity) => {
+            if (activity.code === finalCode) {
+              return {
+                ...activity,
+                budgets: [...activity.budgets, ...travelOthers],
+              }
+            } else {
+              return activity
+            }
+          }),
+        }
+      })
+
+      setProjectBudgetsModified(finalResultWithDynamicOthers)
+    }
+
+    if (projectBudgets?.length > 0) {
+      exec()
+    }
+  }, [projectBudgets])
+
+  useEffect(() => {
+    const exec = async () => {
+      if (requisitionFormDetail?.requested_by.id && isInternal) {
+        supervisorTrigger()
+      }
+    }
+    exec()
+  }, [requisitionFormDetail?.requested_by.id, isInternal, router.asPath])
+
+  useEffect(() => {
+    const exec = async () => {
+      if (supervisorData?.pass_photo_path?.[0] && isInternal) {
+        getOpenUrl(
+          supervisorData?.pass_photo_path?.[0].split('/')[0] as BucketsUnion,
+          supervisorData?.pass_photo_path?.[0].split('/')[1],
+          3600 * 24,
+        )
+          .then((file) => {
+            setSupervisorAvatar(file.url)
+          })
+          .catch((err) => console.error(err))
+      }
+    }
+    exec()
+  }, [supervisorData, isInternal])
+
+  useEffect(() => {
+    const tableContainers = document.querySelectorAll('.table-container')
+
+    tableContainers.forEach((container) => {
+      const topScrollbar = container.querySelector('.top-scrollbar')
+      const tableWrapper = container.querySelector('.table-wrapper')
+
+      if (!topScrollbar && !tableWrapper) return
+
+      // Create a dummy div to simulate scrollbar content
+      const timeoutTopBar = setTimeout(() => {
+        const scrollbarContent = document.createElement('div')
+        scrollbarContent.style.width = `${tableWrapper.scrollWidth}px`
+        scrollbarContent.style.height = '1px'
+        topScrollbar.appendChild(scrollbarContent)
+      }, 100)
+
+      // Synchronize scroll positions
+      const handleTopScroll = () => {
+        tableWrapper.scrollLeft = topScrollbar.scrollLeft
+      }
+      const handleTableScroll = () => {
+        topScrollbar.scrollLeft = tableWrapper.scrollLeft
+      }
+
+      topScrollbar.addEventListener('scroll', handleTopScroll)
+      tableWrapper.addEventListener('scroll', handleTableScroll)
+
+      // Cleanup event listeners on unmount
+      return () => {
+        topScrollbar.removeEventListener('scroll', handleTopScroll)
+        tableWrapper.removeEventListener('scroll', handleTableScroll)
+        clearTimeout(timeoutTopBar)
+      }
+    })
+  }, [projectBudgetsModified, requisitionFormDetail, userLoggedinInformation, index, actionByAvatar])
+
+  useEffect(() => {
+    let totalRemainingRfLocal = 0
+    projectBudgetsModified.map((project) => {
+      project.activities.map((activity) => {
+        activity.budgets.map((budget) => {
+          totalRemainingRfLocal +=
+            budget.qty * budget.pkg_qty * budget.unit_cost_value - budget.total_prs - budget.advance_payment_total
+        })
+      })
+    })
+
+    setTotalRemainingRf(totalRemainingRfLocal)
+  }, [projectBudgetsModified])
+
+  useEffect(() => {
+    perdiemSettingTrigger()
+  }, [])
+
+  if (!userLoggedinInformation) {
+    return <></>
+  }
+
+  return (
+    <>
+      <ProgramRoleAccessControlProvider
+        programId={programId}
+        task={programTasks.VIEW_RF_LIST_AND_DETAIL}
+        action={accessActionType.READ}
+        replaceWith={ForbiddenAccessDisplay(programTasks.VIEW_RF_LIST_AND_DETAIL)}
+      >
+        <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Requisition Form</h1>
+            <p
+              className={cn(
+                'text-sm font-medium text-gray-400',
+                requisitionFormDetail?.program_manager_approval_status === 'pending' ? 'mt-1' : '',
+              )}
+            >
+              {requisitionFormDetail?.program_manager_approval_status === 'pending'
+                ? `Please wait the Previous Approval (${
+                    !isInternal ? 'Project Manager' : 'General Manager'
+                  }) to approve the request first.`
+                : null}
+            </p>
+          </div>
+          {index === 0 ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {userLoggedinInformation?.role?.includes(RoleDefinition.SUPERADMIN) ? (
+                <Button
+                  type="button"
+                  btnType="normal"
+                  size="sm"
+                  variant="error-secondary"
+                  btnFormat="rectangle"
+                  onClick={openDeleteConfirmationModal}
+                >
+                  <Trash01Icon className="h-5 w-5 stroke-error-700" />
+                  Delete Requisition
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                btnType="normal"
+                size="sm"
+                variant="secondary-gray"
+                onClick={openViewLogActivityDrawer}
+              >
+                View Log Activity
+              </Button>
+
+              {userLoggedinInformation.employee_id === requisitionFormDetail.requested_by.id &&
+              requisitionFormDetail?.program_manager_approval_status === RFApprovalStatus.REVISION ? (
+                <Button
+                  type="button"
+                  btnType="normal"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/procurement/${programId}/edit/${requisitionFormDetail.projects[0].id}/${requisitionFormDetail.id}`,
+                    )
+                  }
+                >
+                  Edit Requisition Form
+                </Button>
+              ) : null}
+              {requisitionFormDetail?.program_manager_approval_status == RFApprovalStatus.APPROVED ? (
+                <Menu as="div" className="relative inline-block text-left">
+                  <Menu.Button className="button secondary grow justify-center gap-2 border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 duration-300 hover:bg-gray-50 hover:text-gray-800 focus:border-gray-300 focus:bg-white focus:ring-4 focus:ring-gray-100 focus-visible:outline-none disabled:border-gray-25 disabled:bg-gray-25 disabled:text-gray-300 disabled:hover:bg-gray-25 disabled:hover:text-gray-300 xxs:justify-start">
+                    {loadingButtonStatement.exportExcel ||
+                    loadingButtonStatement['payment-request'] ||
+                    loadingButtonStatement['advance-payment-request'] ||
+                    loadingButtonStatement['advance-perdiem-fee'] ||
+                    loadingButtonStatement['travel-expense'] ? (
+                      <div aria-label="Loading..." role="status">
+                        <svg
+                          aria-hidden="true"
+                          className={cn(
+                            'h-5 w-5 animate-spin-fast fill-gray-700 text-gray-200 group-disabled:opacity-20',
+                          )}
+                          viewBox="0 0 100 101"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                            fill="currentFill"
+                          />
+                        </svg>
+                      </div>
+                    ) : null}
+                    Menu
+                    <ChevronDownIcon data-icon="rotation" className="h-5 w-5 stroke-gray-700" />
+                  </Menu.Button>
+                  <Transition
+                    as={Fragment}
+                    enter="transition ease-out duration-100"
+                    enterFrom="transform opacity-0 scale-95"
+                    enterTo="transform opacity-100 scale-100"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 scale-100"
+                    leaveTo="transform opacity-0 scale-95"
+                  >
+                    <Menu.Items className="absolute right-0 z-20 mt-2 w-80 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
+                        <ProgramRoleAccessControlProvider
+                          programId={programId}
+                          task={programTasks.CREATE_PR_APR}
+                          action={accessActionType.CREATE}
+                          isActionBy={
+                            requisitionFormDetail?.action_by.id === userLoggedinInformation?.employee_id ||
+                            userLoggedinInformation?.role?.includes(RoleDefinition.SUPERADMIN)
+                          }
+                          replaceWith={
+                            <>
+                              <Menu.Item disabled>
+                                <div className="group flex w-full select-none items-center gap-2 rounded-md border-gray-200 bg-white px-4 py-2.5 text-start text-sm font-medium text-gray-300 duration-300 hover:cursor-not-allowed">
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-300" />
+                                  Create: Advance Payment Request
+                                </div>
+                              </Menu.Item>
+                              <Menu.Item disabled>
+                                <div className="group flex w-full select-none items-center gap-2 rounded-md border-gray-200 bg-white px-4 py-2.5 text-start text-sm font-medium text-gray-300 duration-300 hover:cursor-not-allowed">
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-300" />
+                                  Create: Payment Request
+                                </div>
+                              </Menu.Item>
+                            </>
+                          }
+                        >
+                          {rfType === RequisitionFormEnum.TRAVEL ? (
+                            <>
+                              {projectBudgetsModified.flatMap((projectBudget) =>
+                                projectBudget.activities.flatMap((activity) =>
+                                  activity.budgets.filter(
+                                    (budget) =>
+                                      budget.vendor_category_information.action_by === 'ACTION_BY_OPERATIONAL',
+                                  ),
+                                ),
+                              ).length === 0 ? null : (
+                                <>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          active ? 'bg-gray-50' : 'text-gray-700',
+                                          `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                        )}
+                                        onClick={() => {
+                                          paymentRequestValidation(PRTypes.APR)
+                                        }}
+                                      >
+                                        <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                        Create: Advance Payment Request
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          active ? 'bg-gray-50' : 'text-gray-700',
+                                          `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                        )}
+                                        onClick={() => paymentRequestValidation(PRTypes.PR)}
+                                      >
+                                        <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                        Create: Payment Request
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      active ? 'bg-gray-50' : 'text-gray-700',
+                                      `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                    )}
+                                    onClick={() => paymentRequestValidation(PRTypes.APR)}
+                                  >
+                                    <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                    Create: Advance Payment Request
+                                  </button>
+                                )}
+                              </Menu.Item>
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      active ? 'bg-gray-50' : 'text-gray-700',
+                                      `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                    )}
+                                    onClick={() => paymentRequestValidation(PRTypes.PR)}
+                                  >
+                                    <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                    Create: Payment Request
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            </>
+                          )}
+                        </ProgramRoleAccessControlProvider>
+
+                        <ProgramRoleAccessControlProvider
+                          programId={programId}
+                          task={programTasks.CREATE_APF_AT}
+                          action={accessActionType.CREATE}
+                          isTraveller={
+                            requisitionFormDetail?.rf_attributes?.who_traveling?.id ===
+                              userLoggedinInformation?.employee_id ||
+                            // This validation special for traveller non puskapa employee
+                            (requisitionFormDetail?.rf_attributes?.employee_id?.split(':')?.[0] !== 'employee' &&
+                              requisitionFormDetail?.requested_by.id === userLoggedinInformation?.employee_id &&
+                              requisitionFormDetail?.program_manager_approval_status === RFApprovalStatus.APPROVED)
+                          }
+                          replaceWith={
+                            <>
+                              <Menu.Item disabled>
+                                <div className="group flex w-full select-none items-center gap-2 rounded-md border-gray-200 bg-white px-4 py-2.5 text-start text-sm font-medium text-gray-300 duration-300 hover:cursor-not-allowed">
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-300" />
+                                  Create: Advance Perdiem Fee
+                                </div>
+                              </Menu.Item>
+                              <Menu.Item disabled>
+                                <div className="group flex w-full select-none items-center gap-2 rounded-md border-gray-200 bg-white px-4 py-2.5 text-start text-sm font-medium text-gray-300 duration-300 hover:cursor-not-allowed">
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-300" />
+                                  Create: Travel Expenses
+                                </div>
+                              </Menu.Item>
+                            </>
+                          }
+                        >
+                          <>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    active ? 'bg-gray-50' : 'text-gray-700',
+                                    `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                  )}
+                                  onClick={() => paymentRequestValidation(PRTypes.APF)}
+                                >
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                  Create: Advance Perdiem Fee
+                                </button>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    active ? 'bg-gray-50' : 'text-gray-700',
+                                    `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                  )}
+                                  onClick={() => paymentRequestValidation(PRTypes.TE)}
+                                >
+                                  <FilePlus02Icon className="h-4 w-4 stroke-gray-700" />
+                                  Create: Travel Expenses
+                                </button>
+                              )}
+                            </Menu.Item>
+                          </>
+                        </ProgramRoleAccessControlProvider>
+                      </div>
+                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              type="button"
+                              className={cn(
+                                active ? 'bg-gray-50' : 'text-gray-700',
+                                `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                              )}
+                              onClick={saveExcel}
+                            >
+                              <FileDownload03Icon className="h-4 w-4 stroke-gray-700" />
+                              Export Requisition Form
+                            </button>
+                          )}
+                        </Menu.Item>
+                      </div>
+                      <ProgramRoleAccessControlProvider
+                        programId={programId}
+                        task={programTasks.CLOSE_RF}
+                        action={accessActionType.SUBMIT}
+                        replaceWith={
+                          <div className="gap-0.5 px-1.5 py-1">
+                            <Menu.Item disabled>
+                              <div className="group flex w-full select-none items-center gap-2 rounded-md border-gray-200 bg-white px-4 py-2.5 text-start text-sm font-medium text-error-300 duration-300 hover:cursor-not-allowed">
+                                <FolderClosedIcon className="h-4 w-4 stroke-error-300" />
+                                Close Requisition Form
+                              </div>
+                            </Menu.Item>
+                          </div>
+                        }
+                      >
+                        <div className="flex flex-col gap-0.5 px-1.5 py-1">
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                className={cn(
+                                  active ? 'bg-gray-50 text-error-600' : 'text-error-600',
+                                  `group flex w-full items-center gap-2 rounded-md px-4 py-2.5 text-start text-sm font-medium duration-300`,
+                                )}
+                                onClick={showCLoseRfConfirmationModal}
+                              >
+                                <FolderClosedIcon className="h-4 w-4 stroke-error-600" />
+                                Close Requisition Form
+                              </button>
+                            )}
+                          </Menu.Item>
+                        </div>
+                      </ProgramRoleAccessControlProvider>
+                    </Menu.Items>
+                  </Transition>
+                </Menu>
+              ) : (
+                <ProgramRoleAccessControlProvider
+                  programId={programId}
+                  task={programTasks.APPROVAL_RF_GLOBALLY}
+                  action={accessActionType.UPDATE}
+                  replaceWith={<></>}
+                >
+                  {!buttonHidden ? (
+                    <Button
+                      disabled={buttonDisabled ? true : false}
+                      type="button"
+                      btnType="normal"
+                      size="sm"
+                      variant="error-secondary"
+                      isLoading={loadingButtonStatement.reject}
+                      onClick={openRejectConfirmationModal}
+                    >
+                      Reject Request
+                      <XCloseIcon className={cn('h-5 w-5', buttonDisabled ? 'stroke-error-300' : 'stroke-error-700')} />
+                    </Button>
+                  ) : null}
+                  {!buttonHidden ? (
+                    <Button
+                      disabled={buttonDisabled ? true : false}
+                      type="submit"
+                      btnType="normal"
+                      size="sm"
+                      variant="primary"
+                      isLoading={loadingButtonStatement.approve}
+                      onClick={() =>
+                        approveRequisitionForm(
+                          programId,
+                          requisitionFormDetail?.projects[0].id,
+                          requisitionFormDetail?.id,
+                          RFApprovalStatus.APPROVED,
+                        )
+                      }
+                    >
+                      Approve Request
+                      <PlusIcon className="h-5 w-5 stroke-white" />
+                    </Button>
+                  ) : null}
+                </ProgramRoleAccessControlProvider>
+              )}
+            </div>
+          ) : null}
+        </div>
+        <HorizontalTabs
+          tabLists={
+            rfType === RequisitionFormEnum.TRAVEL
+              ? [
+                  'Detail Requisition Form',
+                  'Payment Request',
+                  'Advance Payment Request',
+                  'Advance Payment Statement',
+                  'Advance Perdiem Fee',
+                  'Travel Expenses',
+                ]
+              : ['Detail Requisition Form', 'Payment Request', 'Advance Payment Request', 'Advance Payment Statement']
+          }
+          type="underline"
+          size="sm"
+          handleIndex={handleIndexTabs}
+          index={index}
+          gapLayout={true}
+          removedLayout={!isApprovedByPMHOO}
+        >
+          {/* Detail Requisition Form */}
+          <div>
+            <div className={cn(!isApprovedByPMHOO && 'px-10 py-8')}>
+              {requisitionFormDetail?.has_retur ? (
+                <div className="mb-5 flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 px-6 py-[22px]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-primary-50 bg-primary-100">
+                    <AlertTriangleIcon className="h-6 w-6 stroke-primary-600" />
+                  </div>
+                  <div>
+                    <h6 className="mb-1 font-semibold uppercase text-gray-900">
+                      THE REQUISITION FORM IS CLOSED. TOTAL OF{' '}
+                      <span className="font-bold text-blue-light-600">{formatCurrency('IDR', totalRemainingRf)}</span>{' '}
+                      REMAINING RF ARE TRANSFERRED BACK TO BUDGET NEEDS ITEM.
+                    </h6>
+                    <p className="text-sm text-gray-600">
+                      Please use this to just seeing the information. There will be no any Payment Request can be made
+                      here.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              <div className="grid grid-cols-4 gap-5 border-b border-b-gray-200 py-6">
+                <div className="col-span-2">
+                  <p className="mb-2 text-xs font-bold text-gray-500">Project</p>
+                  <div className="inline-flex items-center gap-2">
+                    <p className="text-xl font-semibold text-gray-900">{programDetail?.program_name}</p>
+                    <Link href={`/dashboard/project/${programId}`}>
+                      <LinkExternal02Icon className="h-5 w-5 stroke-gray-500" />
+                    </Link>
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-gray-500">Partner</p>
+                  <div className="inline-flex items-center gap-2">
+                    <p className="text-xl font-semibold text-gray-900">{programDetail?.partner?.name}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-gray-500">Activity</p>
+                  <div className="inline-flex items-center gap-2">
+                    <p className="text-xl font-semibold text-gray-900">
+                      ({requisitionFormDetail?.projects[0].code}) {requisitionFormDetail?.projects[0].description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-5 border-b border-b-gray-200 py-6">
+                <div className="flex grow flex-col gap-6">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Type of Requisition Form</p>
+                    <div className="inline-flex items-center gap-2">
+                      <p className="text-lg font-semibold text-gray-900">{requisitionType(rfType)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 block text-xs font-bold text-gray-500">Request Number</p>
+                    <p className="text-lg font-semibold uppercase text-gray-900">{requisitionFormDetail?.number}</p>
+                  </div>
+                </div>
+                <div className="flex grow flex-col gap-6">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Request Date</p>
+                    <div className="inline-flex items-center gap-2">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {dayjs(requisitionFormDetail?.requested_at as unknown as string).format('dddd, DD MMM YYYY')}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 block text-xs font-bold text-gray-500">Deadline</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {dayjs(requisitionFormDetail?.deadline as unknown as string).format('dddd, DD MMM YYYY')}
+                    </p>
+                  </div>
+                </div>
+                <div className="col-span-2 flex grow flex-col gap-6">
+                  <div>
+                    <p className="mb-2 block text-xs font-bold text-gray-500">Total Request</p>
+                    <div className="inline-flex items-center gap-2">
+                      <p className="pb-1 text-4xl font-semibold tracking-tight text-gray-900">
+                        {formatCurrency(
+                          programDetail?.currency as unknown as CurrencyUnion,
+                          calculateTotalBudget(requisitionFormDetail),
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 block text-xs font-bold text-gray-500">Activity Name</p>
+                    <p data-testid="about-request-description" className="text-lg font-semibold text-gray-900">
+                      {requisitionFormDetail?.about_request}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {rfType === RequisitionFormEnum.TRAVEL ? (
+                <div className="grid grid-cols-4 gap-5 border-b border-b-gray-200 py-6">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Traveller</p>
+                    <div className="flex items-center gap-2.5">
+                      <Image
+                        src={travelerAvatar}
+                        width={24}
+                        height={32}
+                        alt={travelerAvatar}
+                        className="h-8 w-6 shrink-0 rounded-[200px] object-cover"
+                      />
+                      <p className="font-semibold text-gray-700">
+                        {requisitionFormDetail?.rf_attributes?.who_traveling.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Penyelenggara Acara</p>
+                    <p className="text-lg font-semibold uppercase text-gray-900">
+                      {requisitionFormDetail?.rf_attributes?.additional_data.travel_organizer}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Travel Information</p>
+                    <Button
+                      type="button"
+                      btnType="normal"
+                      size="sm"
+                      variant="secondary-gray"
+                      className="inline-flex justify-center gap-2"
+                      onClick={openTravelInformationDrawer}
+                    >
+                      <FileSearch02Icon className="h-5 w-5 stroke-gray-700" />
+                      View Travel Information
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {rfType === RequisitionFormEnum.PERSONAL_HIRE ? (
+                <div className="grid grid-cols-4 gap-5 border-b border-b-gray-200 py-6">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Consultant</p>
+                    <div className="inline-flex items-center gap-2">
+                      <p className="text-xl font-semibold text-gray-900">{vendorDetail?.vendor_information['name']}</p>
+                      <Link
+                        className="inline-flex items-center justify-center"
+                        href={`/dashboard/external/vendor-adm/${requisitionFormDetail?.rf_attributes.vendor_id}`}
+                      >
+                        <LinkExternal02Icon className="h-5 w-5 stroke-gray-500" />
+                      </Link>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Type of Hire</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {requisitionFormDetail?.rf_attributes.type_hire}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Primary Division</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {requisitionFormDetail?.rf_attributes.primary_division}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Documents</p>
+                    <Button
+                      type="button"
+                      btnType="normal"
+                      size="sm"
+                      variant="secondary-gray"
+                      className="inline-flex justify-center gap-2"
+                      onClick={openPersoanlHireInformationDrawer}
+                    >
+                      <FileSearch02Icon className="h-5 w-5 stroke-gray-700" />
+                      View All Documents
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {rfType === RequisitionFormEnum.STAFF_COST ? (
+                <div className="grid grid-cols-4 gap-5 border-b border-b-gray-200 py-6">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-500">Puskapa Employee</p>
+                    <div className="inline-flex items-center gap-2">
+                      <AvatarLabelGroup
+                        size="sm"
+                        image={requisitionFormDetail.staff_detail?.pass_photo[0] || ''}
+                        text={requisitionFormDetail.staff_detail?.name || ''}
+                        statusIcon={false}
+                      />
+                      <Link
+                        className="inline-flex items-center justify-center"
+                        href={`/dashboard/internal/employee/${requisitionFormDetail.staff_detail?.id}`}
+                      >
+                        <LinkExternal02Icon className="h-5 w-5 stroke-gray-500" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="grid grid-cols-3 gap-5 border-b border-b-gray-200 py-6">
+                <div>
+                  <p className="mb-2 text-xs font-bold text-gray-500">Requested by</p>
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <Image
+                      src={requestedByAvatar}
+                      width={32}
+                      height={24}
+                      alt={requestedByAvatar}
+                      className="h-6 w-8 shrink-0 rounded-[200px] object-cover"
+                    />
+                    <p className="font-semibold text-gray-700">{requisitionFormDetail?.requested_by.name}</p>
+                  </div>
+                  <Badge
+                    id="requested-by-status"
+                    size="sm"
+                    color={
+                      {
+                        approved: 'success',
+                        pending: 'success',
+                        revision: 'warning',
+                        rejected: 'error',
+                      }[requisitionFormDetail?.program_manager_approval_status] || 'success'
+                    }
+                    icon="circle"
+                  >
+                    {{
+                      approved: 'Submitted',
+                      pending: 'Submitted',
+                      rejected: 'Rejected',
+                      revision: 'Notified to revise',
+                    }[requisitionFormDetail?.program_manager_approval_status] || 'Submitted'}
+                  </Badge>
+                  <p className="mt-2 text-xs text-gray-600">
+                    {dayjs(requisitionFormDetail.requested_at as unknown as string)
+                      .utc()
+                      .local()
+                      .format('dddd, DD MMMM YYYY (HH:mm)')}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-gray-500">
+                    {!isInternal ? 'Project Manager' : 'General Manager'}
+                  </p>
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <Image
+                      src={programManagerAvatar}
+                      width={32}
+                      height={24}
+                      alt={programManagerAvatar}
+                      className="h-6 w-8 shrink-0 rounded-[200px] object-cover"
+                    />
+                    <p
+                      id={`${!isInternal ? 'program-manager-name' : 'supervisor-name'}`}
+                      className="font-semibold text-gray-700"
+                    >
+                      {programDetail?.program_ownership_type === 'INTERNAL'
+                        ? (programDetail as any)?.general_manager?.full_name
+                        : programDetail?.program_manager?.full_name}
+                    </p>
+                  </div>
+                  <Badge
+                    id={`${!isInternal ? 'program-manager-status' : 'supervisor-status'}`}
+                    className="capitalize"
+                    size="sm"
+                    color={
+                      {
+                        approved: 'success',
+                        pending: 'warning',
+                        rejected: 'error',
+                        revision: 'error',
+                      }[requisitionFormDetail?.program_manager_approval_status] || 'blue'
+                    }
+                    icon="circle"
+                  >
+                    {{
+                      approved: 'Approved',
+                      pending: 'Pending Approval',
+                      rejected: 'Rejected',
+                      revision: 'Rejected',
+                    }[requisitionFormDetail?.program_manager_approval_status] || 'No Status'}
+                  </Badge>
+                  {requisitionFormDetail?.program_manager_approval_status !== RFApprovalStatus.PENDING &&
+                    requisitionFormDetail.program_manager_approval_at && (
+                      <p className="mt-2 text-xs text-gray-600">
+                        {dayjs(requisitionFormDetail.program_manager_approval_at as unknown as string)
+                          .utc()
+                          .local()
+                          .format('dddd, DD MMMM YYYY (HH:mm)')}
+                      </p>
+                    )}
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-gray-500">
+                    Action by {rfType === RequisitionFormEnum.TRAVEL ? '(Operational)' : ''}
+                  </p>
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <Image
+                      src={actionByAvatar}
+                      width={32}
+                      height={24}
+                      alt={actionByAvatar}
+                      className="h-6 w-8 shrink-0 rounded-[200px] object-cover"
+                    />
+                    <p id="action-by-name" className="font-semibold text-gray-700">
+                      {requisitionFormDetail?.action_by.name}
+                    </p>
+                  </div>
+                  <Badge
+                    id="action-by-status"
+                    size="sm"
+                    color={
+                      requisitionFormDetail?.program_manager_approval_status === RFApprovalStatus.APPROVED
+                        ? 'success'
+                        : 'blue'
+                    }
+                    icon="circle"
+                  >
+                    {requisitionFormDetail?.program_manager_approval_status === RFApprovalStatus.APPROVED
+                      ? 'Notified'
+                      : 'Waiting Notified'}
+                  </Badge>
+                  {requisitionFormDetail?.program_manager_approval_status !== RFApprovalStatus.PENDING &&
+                    requisitionFormDetail?.program_manager_approval_status !== RFApprovalStatus.REJECTED &&
+                    requisitionFormDetail.program_manager_approval_at && (
+                      <p className="mt-2 text-xs text-gray-600">
+                        {dayjs(requisitionFormDetail.program_manager_approval_at as unknown as string)
+                          .utc()
+                          .local()
+                          .format('dddd, DD MMMM YYYY (HH:mm)')}
+                      </p>
+                    )}
+                </div>
+              </div>
+              {/* Special FOR PH and PC */}
+              {rfType !== RequisitionFormEnum.TRAVEL ? (
+                <div className="mt-5">
+                  <div className="flex w-full flex-col">
+                    {projectBudgetsModified.map((project) =>
+                      project.activities?.map((activity) => (
+                        <div className="border-b border-b-gray-200 py-0" key={activity.id}>
+                          <div className="flex w-full items-center gap-4 py-6">
+                            <span className="rounded bg-gray-100 px-8 py-0.5 font-semibold leading-6 text-gray-900">
+                              {activity.code}
+                            </span>
+                            <div className="flex grow flex-wrap">
+                              <p className="text-left font-semibold text-gray-900">{activity.description}</p>
+                            </div>
+                            <div className="inline-flex w-60 items-center justify-between gap-3 pl-3 pr-6">
+                              <p className="font-extrabold text-gray-600">Rp</p>
+                              <div className="w-40 text-right">
+                                <p className="font-extrabold text-gray-600">
+                                  {formatCurrency('IDR', calculateUnitCostPerActivity(activity), true)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="table-container">
+                            <div className="top-scrollbar h-3 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50"></div>
+                            <div className="table-wrapper overflow-x-auto py-0 scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50">
+                              {activity.budgets.length > 0 && (
+                                <div className="table-selection w-full min-w-fit table-fixed text-gray-600">
+                                  <div className="border-y border-y-gray-200 bg-gray-50">
+                                    <div className="flex items-center">
+                                      {requisitionFormDetail?.program_manager_approval_status ==
+                                        RFApprovalStatus.APPROVED && true ? (
+                                        <ProgramRoleAccessControlProvider
+                                          programId={programId}
+                                          task={programTasks.CREATE_PR_APR}
+                                          action={accessActionType.READ}
+                                          isActionBy={
+                                            requisitionFormDetail?.action_by.id === userLoggedinInformation?.employee_id
+                                          }
+                                          replaceWith={<></>}
+                                        >
+                                          <div className="flex w-16 justify-center">
+                                            <input
+                                              type="checkbox"
+                                              value="parent"
+                                              className="input-checkbox disabled:cursor-not-allowed"
+                                              checked={activity.is_checked || false}
+                                              onChange={(e) => handleActivityChange(activity.id, e.target.checked)}
+                                              disabled={
+                                                activity.budgets
+                                                  .map((budget) => budget?.['totally_paid'])
+                                                  .includes(true)
+                                                  ? true
+                                                  : false
+                                              }
+                                            />
+                                          </div>
+                                        </ProgramRoleAccessControlProvider>
+                                      ) : null}
+                                      <div
+                                        className={cn(
+                                          'w-32 bg-gray-50 px-4 py-3.5 pl-6 text-left text-xs font-medium text-gray-600 2xl:px-6',
+                                          requisitionFormDetail?.program_manager_approval_status ==
+                                            RFApprovalStatus.APPROVED && true
+                                            ? ''
+                                            : 'pl-6',
+                                        )}
+                                      >
+                                        No
+                                      </div>
+                                      <div className="w-52 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Description
+                                      </div>
+                                      <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Vendor Type
+                                      </div>
+                                      <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Vendor Category
+                                      </div>
+                                      {rfType !== RequisitionFormEnum.PERSONAL_HIRE && (
+                                        <div className="w-60 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                          Recommended Vendor
+                                        </div>
+                                      )}
+                                      <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Qty
+                                      </div>
+                                      <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Unit
+                                      </div>
+                                      <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Pckg Qty
+                                      </div>
+                                      <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Pckg Unit
+                                      </div>
+                                      <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Unit Cost
+                                      </div>
+                                      <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                        Total Requested (RF)
+                                      </div>
+                                      {/* {requisitionFormDetail?.program_manager_approval_status ===
+                                        RFApprovalStatus.APPROVED &&
+                                      true ? (
+                                        <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                          Advance Payment
+                                        </div>
+                                      ) : null} */}
+                                      {requisitionFormDetail?.program_manager_approval_status ===
+                                        RFApprovalStatus.APPROVED && true ? (
+                                        <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                          Total Payment Request
+                                        </div>
+                                      ) : null}
+                                      {requisitionFormDetail?.program_manager_approval_status ===
+                                        RFApprovalStatus.APPROVED && true ? (
+                                        <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                          Remaining (RF)
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <div className="divide-y divide-gray-200 text-sm">
+                                    {activity.budgets?.map((budget) => (
+                                      <div
+                                        className={cn(
+                                          'flex items-center',
+                                          budget?.['totally_paid'] ? 'bg-error-200' : '',
+                                        )}
+                                        key={budget.code}
+                                      >
+                                        {requisitionFormDetail?.program_manager_approval_status ==
+                                          RFApprovalStatus.APPROVED && true ? (
+                                          <ProgramRoleAccessControlProvider
+                                            programId={programId}
+                                            task={programTasks.CREATE_PR_APR}
+                                            action={accessActionType.READ}
+                                            isActionBy={
+                                              requisitionFormDetail?.action_by.id ===
+                                              userLoggedinInformation?.employee_id
+                                            }
+                                            replaceWith={<></>}
+                                          >
+                                            <div className="flex w-16 justify-center">
+                                              <input
+                                                type="checkbox"
+                                                id={budget.id}
+                                                data-testid={budget.code}
+                                                checked={budget?.is_checked || false}
+                                                value="child"
+                                                className="input-checkbox"
+                                                onChange={(e) =>
+                                                  handleBudgetChange(activity.id, budget.id, e.target.checked)
+                                                }
+                                                disabled={budget?.['totally_paid'] ? true : false}
+                                              />
+                                            </div>
+                                          </ProgramRoleAccessControlProvider>
+                                        ) : null}
+                                        <div className="w-32 p-4 pl-6 2xl:px-6">
+                                          {budget.code.replace(/\.(\d+)$/, '-$1')}
+                                        </div>
+                                        <div className="w-52 p-4 2xl:px-6">{budget.description}</div>
+                                        <div className="w-48 p-4 capitalize 2xl:px-6">
+                                          {budget.vendor_category_information.vendor_type.name}
+                                        </div>
+                                        <div className="w-48 p-4 capitalize 2xl:px-6">
+                                          {budget.vendor_category_information.name}
+                                        </div>
+                                        {rfType !== RequisitionFormEnum.PERSONAL_HIRE && (
+                                          <div className="w-60 p-4 2xl:px-6">{budget.recommended_vendor || '-'}</div>
+                                        )}
+                                        <div className="w-28 p-4 2xl:px-6">{budget.qty}</div>
+                                        <div className="w-28 p-4 lowercase 2xl:px-6">{budget.unit}</div>
+                                        <div className="w-28 p-4 2xl:px-6">{budget.pkg_qty}</div>
+                                        <div className="w-28 p-4 lowercase 2xl:px-6">{budget.pkg_unit}</div>
+                                        <div className="w-48 px-4 py-2.5 2xl:px-6">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <p className="text-gray-500">Rp</p>
+                                            <p>{formatCurrency('IDR', budget.unit_cost_value, true)}</p>
+                                          </div>
+                                        </div>
+                                        <div className="w-48 px-4 py-2.5 2xl:px-6">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <p className="text-gray-500">Rp</p>
+                                            <p>
+                                              {formatCurrency(
+                                                'IDR',
+                                                budget.qty * budget.pkg_qty * budget.unit_cost_value,
+                                                true,
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {/* {requisitionFormDetail?.program_manager_approval_status ===
+                                          RFApprovalStatus.APPROVED &&
+                                        true ? (
+                                          <div className="w-48 px-4 py-3.5 text-left text-gray-600 2xl:px-6">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <p className="text-gray-500">
+                                                Rp
+                                              </p>
+                                              <p>
+                                                {formatCurrency(
+                                                  'IDR',
+                                                  budget.advance_payment_total,
+                                                  true,
+                                                )}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        ) : null} */}
+                                        {requisitionFormDetail?.program_manager_approval_status ===
+                                          RFApprovalStatus.APPROVED && true ? (
+                                          <div className="w-48 px-4 py-3.5 text-left text-gray-600 2xl:px-6">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <p className="text-gray-500">Rp</p>
+                                              <p>{formatCurrency('IDR', budget.total_prs, true)}</p>
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                        {requisitionFormDetail?.program_manager_approval_status ===
+                                          RFApprovalStatus.APPROVED && true ? (
+                                          <div className="w-48 p-4 2xl:px-6">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <p className="text-gray-500">Rp</p>
+                                              <p>
+                                                {formatCurrency(
+                                                  'IDR',
+                                                  budget.qty * budget.pkg_qty * budget.unit_cost_value -
+                                                    budget.total_prs -
+                                                    budget.advance_payment_total,
+                                                  true,
+                                                )}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )),
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* ACTION_BY_OPERATIONAL */}
+
+                  {/* This UI will be appear when operational login but no travel type requested by operation */}
+                  {requisitionFormDetail.action_by.id === userLoggedinInformation?.employee_id &&
+                  projectBudgetsModified.flatMap((projectBudget) =>
+                    projectBudget.activities.flatMap((activity) =>
+                      activity.budgets.filter(
+                        (budget) => budget.vendor_category_information.action_by === 'ACTION_BY_OPERATIONAL',
+                      ),
+                    ),
+                  ).length === 0 ? (
+                    <>
+                      <div className="relative mb-5 flex justify-center py-6">
+                        <div className="absolute inset-x-0 top-1/2 z-0 h-px bg-gray-200"></div>
+                        <div className="relative z-10 bg-white px-6">
+                          <span className="inline-block rounded-full bg-indigo-500 px-10 py-2 text-xs font-bold uppercase text-white">
+                            ACTION BY OPERATIONAL
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mb-5 flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-[22px] 2xl:px-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-primary-50 bg-primary-100">
+                          <AlertTriangleIcon className="h-6 w-6 stroke-primary-600" />
+                        </div>
+                        <div>
+                          <h6 className="mb-1 font-semibold text-gray-900">
+                            This Travel Request only have “Action by Traveller”
+                          </h6>
+                          <p className="text-sm text-gray-600">
+                            Make sure to check the Traveller already notified about the Travel Request.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {requisitionFormDetail?.rf_attributes?.who_traveling.id !== userLoggedinInformation?.employee_id ? (
+                    <div className="mt-5">
+                      {userLoggedinInformation?.employee_id ===
+                        requisitionFormDetail?.rf_attributes?.who_traveling.id &&
+                      isTravelInformationStatement.ACTION_BY_OPERATIONAL ? (
+                        <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-10 text-center">
+                          <Image
+                            src={`${process.env.NEXT_PUBLIC_ASSETS}/svg/cloud-illustration.svg`}
+                            width={152}
+                            height={118}
+                            alt={`${process.env.NEXT_PUBLIC_ASSETS}/svg/cloud-illustration.svg`}
+                            className="mx-auto mb-4"
+                          />
+                          <h6 className="mb-1 font-semibold text-gray-900">No travel budget request</h6>
+                          <p className="mb-6 text-sm text-gray-600">
+                            Travel budget action by operational team is empty
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {projectBudgetsModified?.map((project) => (
+                        <Fragment key={project.id}>
+                          {project.activities?.map((activity) => (
+                            <Fragment key={activity.id}>
+                              {activity.budgets
+                                .filter(
+                                  (budget) => budget.vendor_category_information.action_by === 'ACTION_BY_OPERATIONAL',
+                                )
+                                ?.map((budget, budgetIndex) => (
+                                  <Fragment key={budget.id}>
+                                    {budgetIndex === 0 ? (
+                                      <div className="relative mb-5 flex justify-center py-6">
+                                        <div className="absolute inset-x-0 top-1/2 z-0 h-px bg-gray-200"></div>
+                                        <div className="relative z-10 bg-white px-6">
+                                          <span className="inline-block rounded-full bg-indigo-500 px-10 py-2 text-xs font-bold uppercase text-white">
+                                            ACTION BY OPERATIONAL
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ) : null}
+
+                                    <div
+                                      className={cn(
+                                        'flex w-full flex-col border-l-4 border-l-indigo-400 pl-6',
+                                        budgetIndex !== 0 && 'mt-10',
+                                      )}
+                                    >
+                                      <div className="flex items-start gap-5 border-b border-b-gray-200 pb-6">
+                                        <div className="w-48">
+                                          <p className="mb-2 text-xs font-bold text-gray-500">Vendor Category</p>
+                                          <p className="text-lg font-semibold capitalize text-gray-900">
+                                            {budget.vendor_category_information.name}
+                                          </p>
+                                        </div>
+                                        <div className="grow">
+                                          <div className="grid grid-cols-2 gap-5">
+                                            <div>
+                                              <p className="mb-2 text-xs font-bold text-gray-500">
+                                                {budget.vendor_category_information.name} Vendor
+                                              </p>
+                                              <p className="text-lg font-semibold capitalize text-gray-900">
+                                                {budget.recommended_vendor || '-'}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              {budget.vendor_category_information.name.toLowerCase() === 'airfare' ? (
+                                                <>
+                                                  <p className="mb-2 text-xs font-bold text-gray-500">
+                                                    Airfare Information
+                                                  </p>
+                                                  <Sheet>
+                                                    <SheetTrigger className="w-full">
+                                                      <Button
+                                                        btnType="div"
+                                                        size="sm"
+                                                        variant="secondary-gray"
+                                                        className="w-full justify-center py-2.5"
+                                                      >
+                                                        Airfare Information
+                                                      </Button>
+                                                    </SheetTrigger>
+                                                    <SheetContent>
+                                                      <SheetHeader>
+                                                        <div className="flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-primary-50 bg-primary-100">
+                                                          <FileSearch02Icon className="h-5 w-5 stroke-primary-600" />
+                                                        </div>
+                                                        <div>
+                                                          <SheetTitle>Airfare Information</SheetTitle>
+                                                          <SheetDescription>
+                                                            {programDetail?.program_name}
+                                                          </SheetDescription>
+                                                        </div>
+                                                      </SheetHeader>
+                                                      <div className="px-6 pb-6">
+                                                        <div className="flex flex-col gap-4">
+                                                          {(
+                                                            budget.additional_data['travel_information'][
+                                                              'airfare_items'
+                                                            ] ?? []
+                                                          ).map(
+                                                            (item: {
+                                                              id: string
+                                                              name: string
+                                                              origin: string
+                                                              destination: string
+                                                              date: string
+                                                              time: string
+                                                              transport_mode: string
+                                                              luggage_info: string
+                                                            }) => (
+                                                              <div
+                                                                key={item.id}
+                                                                className="rounded-lg border border-gray-200 p-4"
+                                                              >
+                                                                <div className="space-y-2">
+                                                                  <h4 className="text-base font-medium text-gray-900">
+                                                                    {item.name}
+                                                                  </h4>
+                                                                  <div className="flex items-center gap-2 text-sm">
+                                                                    <span className="font-medium text-gray-600">
+                                                                      {item.origin}
+                                                                    </span>
+                                                                    <span className="text-gray-500">→</span>
+                                                                    <span className="font-medium text-gray-600">
+                                                                      {item.destination}
+                                                                    </span>
+                                                                  </div>
+                                                                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                                                                    <div className="flex items-center gap-2">
+                                                                      <CalendarIcon className="h-3.5 w-3.5 stroke-gray-600" />
+                                                                      <span>
+                                                                        {item.date
+                                                                          ? dayjs(item.date).format('D MMMM YYYY')
+                                                                          : '-'}
+                                                                      </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                      <ClockStopwatchIcon className="h-3.5 w-3.5 stroke-gray-600" />
+                                                                      <span>
+                                                                        {item.time
+                                                                          ? dayjs(item.time).format('HH:mm')
+                                                                          : '-'}
+                                                                      </span>
+                                                                    </div>
+                                                                  </div>
+                                                                  {item.transport_mode && (
+                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                      <PlaneIcon className="h-3.5 w-3.5 stroke-gray-600" />
+                                                                      <span>{item.transport_mode}</span>
+                                                                    </div>
+                                                                  )}
+                                                                  {item.luggage_info && (
+                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                      <Briefcase02Icon className="h-3.5 w-3.5 stroke-gray-600" />
+                                                                      <span>{item.luggage_info}</span>
+                                                                    </div>
+                                                                  )}
+                                                                </div>
+                                                              </div>
+                                                            ),
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                      <SheetFooter>
+                                                        <SheetPrimitive.Close asChild>
+                                                          <Button
+                                                            type="button"
+                                                            btnType="normal"
+                                                            variant="secondary-gray"
+                                                            size="md"
+                                                          >
+                                                            Cancel
+                                                          </Button>
+                                                        </SheetPrimitive.Close>
+                                                      </SheetFooter>
+                                                    </SheetContent>
+                                                  </Sheet>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <p className="mb-2 text-xs font-bold text-gray-500">
+                                                    {budget.vendor_category_information.name} Information
+                                                  </p>
+                                                  <p className="text-lg font-semibold capitalize text-gray-900">
+                                                    {dayjs(
+                                                      budget.additional_data['travel_information']['vendor_date_range'][
+                                                        'start'
+                                                      ],
+                                                    ).format('dddd, DD MMM YYYY')}{' '}
+                                                    -{' '}
+                                                    {dayjs(
+                                                      budget.additional_data['travel_information']['vendor_date_range'][
+                                                        'end'
+                                                      ],
+                                                    ).format('dddd, DD MMM YYYY')}
+                                                  </p>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div key={activity.id} className="border-b border-b-gray-200 py-0">
+                                        <div className="mb-6 flex w-full items-center gap-4 pt-6">
+                                          <span className="rounded bg-gray-100 px-8 py-0.5 font-semibold leading-6 text-gray-900">
+                                            {`${budget.code?.split('.')[0]}.${budget.code?.split('.')[1]}`}
+                                          </span>
+                                          <div className="flex grow flex-wrap">
+                                            <p className="text-left font-semibold text-gray-900">
+                                              {activity.description}
+                                            </p>
+                                          </div>
+                                          <div className="inline-flex w-60 items-center justify-between gap-3 pl-3 pr-6">
+                                            <p className="font-extrabold text-gray-600">Rp</p>
+                                            <div className="w-40 text-right">
+                                              <p className="font-extrabold text-gray-600">
+                                                {formatCurrency(
+                                                  'IDR',
+                                                  budget.qty * budget.pkg_qty * budget.unit_cost_value,
+                                                  true,
+                                                )}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="table-container">
+                                          <div className="top-scrollbar h-3 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50"></div>
+                                          <div className="table-wrapper overflow-x-auto scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50">
+                                            {activity.budgets?.length > 0 && (
+                                              <div className="table-selection w-full min-w-fit table-fixed text-gray-600">
+                                                <div className="border-y border-y-gray-200 bg-gray-50">
+                                                  <div className="flex items-center">
+                                                    {requisitionFormDetail?.program_manager_approval_status ==
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <ProgramRoleAccessControlProvider
+                                                        programId={programId}
+                                                        task={programTasks.CREATE_PR_APR}
+                                                        action={accessActionType.READ}
+                                                        isActionBy={
+                                                          requisitionFormDetail.action_by.id ===
+                                                          userLoggedinInformation?.employee_id
+                                                        }
+                                                        replaceWith={<></>}
+                                                      >
+                                                        <div className="flex w-16 justify-center">
+                                                          <input
+                                                            type="checkbox"
+                                                            value="parent"
+                                                            className="input-checkbox disabled:cursor-not-allowed"
+                                                            disabled
+                                                            readOnly
+                                                            checked={activity.is_checked || false}
+                                                            onChange={(e) =>
+                                                              handleActivityChange(activity.id, e.target.checked)
+                                                            }
+                                                          />
+                                                        </div>
+                                                      </ProgramRoleAccessControlProvider>
+                                                    ) : null}
+                                                    <div
+                                                      className={cn(
+                                                        'w-32 bg-gray-50 px-4 py-3.5 pl-6 text-left text-xs font-medium text-gray-600 2xl:px-6',
+                                                        requisitionFormDetail?.program_manager_approval_status ==
+                                                          RFApprovalStatus.APPROVED && true
+                                                          ? ''
+                                                          : 'pl-6',
+                                                      )}
+                                                    >
+                                                      No
+                                                    </div>
+                                                    <div className="w-52 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Description
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Qty
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Unit
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Pckg Qty
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Pckg Unit
+                                                    </div>
+                                                    <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Unit Cost
+                                                    </div>
+                                                    <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Total Requested (RF)
+                                                    </div>
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                        Total Payment Request
+                                                      </div>
+                                                    ) : null}
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                        {/* Action by Operational */}
+                                                        Remaining (RF)
+                                                      </div>
+                                                    ) : null}
+                                                  </div>
+                                                </div>
+                                                <div className="divide-y divide-gray-200 text-sm">
+                                                  <div className="flex items-center" key={budget.code}>
+                                                    {requisitionFormDetail?.program_manager_approval_status ==
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <ProgramRoleAccessControlProvider
+                                                        programId={programId}
+                                                        task={programTasks.CREATE_PR_APR}
+                                                        action={accessActionType.READ}
+                                                        isActionBy={
+                                                          requisitionFormDetail.action_by.id ===
+                                                          userLoggedinInformation?.employee_id
+                                                        }
+                                                        replaceWith={<></>}
+                                                      >
+                                                        <div className="flex w-16 justify-center">
+                                                          <input
+                                                            type="checkbox"
+                                                            id={budget.id}
+                                                            data-testid={budget.code}
+                                                            checked={budget?.is_checked || false}
+                                                            value="child"
+                                                            className="input-checkbox"
+                                                            onChange={(e) =>
+                                                              handleBudgetChange(
+                                                                activity.id,
+                                                                budget.id,
+                                                                e.target.checked,
+                                                              )
+                                                            }
+                                                            disabled={budget?.['totally_paid'] ? true : false}
+                                                          />
+                                                        </div>
+                                                      </ProgramRoleAccessControlProvider>
+                                                    ) : null}
+                                                    <div className="w-32 p-4 pl-6 2xl:px-6">
+                                                      {budget.code.replace(/\.(\d+)$/, '-$1')}
+                                                    </div>
+                                                    <div className="w-52 p-4 2xl:px-6">{budget.description}</div>
+                                                    <div className="w-28 p-4 2xl:px-6">{budget.qty}</div>
+                                                    <div className="w-28 p-4 lowercase 2xl:px-6">{budget.unit}</div>
+                                                    <div className="w-28 p-4 2xl:px-6">{budget.pkg_qty}</div>
+                                                    <div className="w-28 p-4 lowercase 2xl:px-6">{budget.pkg_unit}</div>
+                                                    <div className="w-48 px-4 py-2.5 2xl:px-6">
+                                                      <div className="flex items-center justify-between gap-3">
+                                                        <p className="text-gray-500">Rp</p>
+                                                        <div>{formatCurrency('IDR', budget.unit_cost_value, true)}</div>
+                                                      </div>
+                                                    </div>
+                                                    <div className="w-48 bg-white px-4 py-2.5 2xl:px-6">
+                                                      <div className="flex items-center justify-between gap-3">
+                                                        <p className="text-gray-500">Rp</p>
+                                                        <p>
+                                                          {formatCurrency(
+                                                            'IDR',
+                                                            budget.qty * budget.pkg_qty * budget.unit_cost_value,
+                                                            true,
+                                                          )}
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 bg-white px-4 py-3.5 text-left text-gray-600 2xl:px-6">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                          <p className="text-gray-500">Rp</p>
+                                                          <p>{formatCurrency('IDR', budget.total_prs, true)}</p>
+                                                        </div>
+                                                      </div>
+                                                    ) : null}
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 p-4 2xl:px-6">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                          <p className="text-gray-500">Rp</p>
+                                                          <p>
+                                                            {formatCurrency(
+                                                              'IDR',
+                                                              budget.qty * budget.pkg_qty * budget.unit_cost_value -
+                                                                budget.total_prs -
+                                                                budget.advance_payment_total,
+                                                              true,
+                                                            )}
+                                                          </p>
+                                                        </div>
+                                                      </div>
+                                                    ) : null}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Fragment>
+                                ))}
+                            </Fragment>
+                          ))}
+                        </Fragment>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* ACTION_BY_TRAVELLER */}
+                  {requisitionFormDetail?.action_by.id !== userLoggedinInformation?.employee_id ||
+                  requisitionFormDetail.rf_attributes.who_traveling.id === userLoggedinInformation?.employee_id ? (
+                    <div className="mt-5">
+                      {requisitionFormDetail?.action_by.id === userLoggedinInformation?.employee_id &&
+                      isTravelInformationStatement.ACTION_BY_TRAVELLER ? (
+                        <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-10 text-center">
+                          <Image
+                            src={`${process.env.NEXT_PUBLIC_ASSETS}/svg/cloud-illustration.svg`}
+                            width={152}
+                            height={118}
+                            alt={`${process.env.NEXT_PUBLIC_ASSETS}/svg/cloud-illustration.svg`}
+                            className="mx-auto mb-4"
+                          />
+                          <h6 className="mb-1 font-semibold text-gray-900">No travel budget request</h6>
+                          <p className="mb-6 text-sm text-gray-600">Travel budget action by traveller is empty</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* This UI will be appear when traveller login but no travel type requested by traveller */}
+                          {requisitionFormDetail.rf_attributes.who_traveling.id ===
+                            userLoggedinInformation?.employee_id &&
+                          projectBudgetsModified.flatMap((projectBudget) =>
+                            projectBudget.activities.flatMap((activity) =>
+                              activity.budgets.filter(
+                                (budget) => budget.vendor_category_information.action_by === 'ACTION_BY_TRAVELLER',
+                              ),
+                            ),
+                          ).length === 0 ? (
+                            <>
+                              <div className="relative mb-5 flex justify-center py-6">
+                                <div className="absolute inset-x-0 top-1/2 z-0 h-px bg-gray-200"></div>
+                                <div className="relative z-10 bg-white px-6">
+                                  <span className="inline-block rounded-full bg-rose-400 px-10 py-2 text-xs font-bold uppercase text-white">
+                                    ACTION BY TRAVELLER
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="mb-5 flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-[22px] 2xl:px-6">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-primary-50 bg-primary-100">
+                                  <AlertTriangleIcon className="h-6 w-6 stroke-primary-600" />
+                                </div>
+                                <div>
+                                  <h6 className="mb-1 font-semibold text-gray-900">
+                                    This Travel Request only have “Action by Operational”
+                                  </h6>
+                                  <p className="text-sm text-gray-600">
+                                    Make sure to check the Traveller already notified about the Travel Request.
+                                  </p>
+                                </div>
+                              </div>
+                            </>
+                          ) : null}
+                          {/* Show this UI when list of travel requested by traveller is exist */}
+                          {projectBudgetsModified.flatMap((projectBudget) =>
+                            projectBudget.activities.flatMap((activity) =>
+                              activity.budgets.filter(
+                                (budget) => budget.vendor_category_information.action_by === 'ACTION_BY_TRAVELLER',
+                              ),
+                            ),
+                          ).length > 0 && (
+                            <div className="relative flex justify-center py-6">
+                              <div className="absolute inset-x-0 top-1/2 z-0 h-px bg-gray-200"></div>
+                              <div className="relative z-10 bg-white px-6">
+                                <span className="inline-block rounded-full bg-rose-400 px-10 py-2 text-xs font-bold uppercase text-white">
+                                  ACTION BY TRAVELLER
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex w-full flex-col gap-10 border-l-4 border-l-rose-400 pl-6">
+                            {projectBudgetsModified?.map((project) => (
+                              <Fragment key={project.id}>
+                                {project.activities?.map((activity) => (
+                                  <Fragment key={activity.id}>
+                                    {calculatePureTotalBudget(
+                                      activity.budgets.filter(
+                                        (budget) =>
+                                          budget.vendor_category_information.action_by === 'ACTION_BY_TRAVELLER',
+                                      ),
+                                    ) > 0 ? (
+                                      <div className="border-b border-b-gray-200 py-0" key={activity.id}>
+                                        <div className="mb-6 flex w-full items-center gap-4">
+                                          <span className="rounded bg-gray-100 px-8 py-0.5 font-semibold leading-6 text-gray-900">
+                                            {activity.code}
+                                          </span>
+                                          <div className="flex grow flex-wrap">
+                                            <p className="text-left font-semibold text-gray-900">
+                                              {activity.description}
+                                            </p>
+                                          </div>
+                                          <div className="inline-flex w-60 items-center justify-between gap-3 pl-3 pr-6">
+                                            <p className="font-extrabold text-gray-600">Rp</p>
+                                            <div className="w-40 text-right">
+                                              <p className="font-extrabold text-gray-600">
+                                                {formatCurrency(
+                                                  'IDR',
+                                                  calculatePureTotalBudget(
+                                                    activity.budgets.filter(
+                                                      (budget) =>
+                                                        budget.vendor_category_information.action_by ===
+                                                        'ACTION_BY_TRAVELLER',
+                                                    ),
+                                                  ),
+                                                  true,
+                                                )}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="table-container">
+                                          <div className="top-scrollbar h-3 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50"></div>
+                                          <div className="table-wrapper overflow-x-auto scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50">
+                                            {activity.budgets.length > 0 && (
+                                              <div className="table-selection w-full min-w-fit table-fixed text-gray-600">
+                                                <div className="border-y border-y-gray-200 bg-gray-50">
+                                                  <div className="flex items-center">
+                                                    <div className="w-32 bg-gray-50 px-4 py-3.5 pl-6 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      No
+                                                    </div>
+                                                    <div className="w-52 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Description
+                                                    </div>
+                                                    <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Vendor Category
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Qty
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Unit
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Pckg Qty
+                                                    </div>
+                                                    <div className="w-28 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Pckg Unit
+                                                    </div>
+                                                    <div className="w-48 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Unit Cost
+                                                    </div>
+                                                    <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                      Total Requested (RF)
+                                                    </div>
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                        Total Travel Expense
+                                                      </div>
+                                                    ) : null}
+
+                                                    {requisitionFormDetail?.program_manager_approval_status ===
+                                                      RFApprovalStatus.APPROVED && true ? (
+                                                      <div className="w-48 bg-gray-50 px-4 py-3.5 text-left text-xs font-medium text-gray-600 2xl:px-6">
+                                                        {/* Action by Traveller */}
+                                                        Remaining (RF)
+                                                      </div>
+                                                    ) : null}
+                                                  </div>
+                                                </div>
+                                                <div className="divide-y divide-gray-200 text-sm">
+                                                  {activity.budgets?.map((budget) => (
+                                                    <Fragment key={`${budget.id}-${budget.code}`}>
+                                                      {budget.vendor_category_information.action_by ===
+                                                      'ACTION_BY_OPERATIONAL' ? (
+                                                        <></>
+                                                      ) : (
+                                                        <>
+                                                          <div className="flex items-center">
+                                                            <div className="w-32 p-4 pl-6 2xl:px-6">
+                                                              {budget.code.replace(/\.(\d+)$/, '-$1')}
+                                                            </div>
+                                                            <div className="w-52 p-4 2xl:px-6">
+                                                              {budget.description}
+                                                            </div>
+                                                            <div className="w-48 p-4 capitalize 2xl:px-6">
+                                                              {budget.vendor_category_information.name}
+                                                            </div>
+                                                            <div className="w-28 p-4 2xl:px-6">{budget.qty}</div>
+                                                            <div className="w-28 p-4 lowercase 2xl:px-6">
+                                                              {budget.unit}
+                                                            </div>
+                                                            <div className="w-28 p-4 2xl:px-6">{budget.pkg_qty}</div>
+                                                            <div className="w-28 p-4 lowercase 2xl:px-6">
+                                                              {budget.pkg_unit}
+                                                            </div>
+                                                            <div className="w-48 px-4 py-2.5 2xl:px-6">
+                                                              <div className="flex items-center justify-between gap-3">
+                                                                <p className="text-gray-500">Rp</p>
+                                                                <p>
+                                                                  {formatCurrency('IDR', budget.unit_cost_value, true)}
+                                                                </p>
+                                                              </div>
+                                                            </div>
+                                                            <div className="w-48 bg-white px-4 py-2.5 2xl:px-6">
+                                                              <div className="flex items-center justify-between gap-3">
+                                                                <p className="text-gray-500">Rp</p>
+                                                                <p>
+                                                                  {formatCurrency(
+                                                                    'IDR',
+                                                                    budget.qty *
+                                                                      budget.pkg_qty *
+                                                                      budget.unit_cost_value,
+                                                                    true,
+                                                                  )}
+                                                                </p>
+                                                              </div>
+                                                            </div>
+                                                            {requisitionFormDetail?.program_manager_approval_status ===
+                                                              RFApprovalStatus.APPROVED && true ? (
+                                                              <div className="w-48 bg-white px-4 py-3.5 text-left text-gray-600 2xl:px-6">
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                  <p className="text-gray-500">Rp</p>
+                                                                  <p>{formatCurrency('IDR', budget.total_prs, true)}</p>
+                                                                </div>
+                                                              </div>
+                                                            ) : null}
+                                                            {requisitionFormDetail?.program_manager_approval_status ===
+                                                              RFApprovalStatus.APPROVED && true ? (
+                                                              <div className="w-48 p-4 2xl:px-6">
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                  <p className="text-gray-500">Rp</p>
+                                                                  <p>
+                                                                    {formatCurrency(
+                                                                      'IDR',
+                                                                      budget.qty *
+                                                                        budget.pkg_qty *
+                                                                        budget.unit_cost_value -
+                                                                        budget.total_prs -
+                                                                        budget.advance_payment_total,
+                                                                      true,
+                                                                    )}
+                                                                  </p>
+                                                                </div>
+                                                              </div>
+                                                            ) : null}
+                                                          </div>
+                                                        </>
+                                                      )}
+                                                    </Fragment>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </Fragment>
+                                ))}
+                              </Fragment>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+          {/* Payment Request */}
+          <>
+            <PaymentRequestList slugIdentifier={[programId, rfId, PRTypes.PR]} />
+          </>
+          {/* Advance Payment Request */}
+          <>
+            <PaymentRequestList slugIdentifier={[programId, rfId, PRTypes.APR]} />
+          </>
+          {/* Advance Payment Statement */}
+          <>
+            <PaymentRequestList slugIdentifier={[programId, rfId, PRTypes.APS]} />
+          </>
+          {rfType === RequisitionFormEnum.TRAVEL ? (
+            <>
+              {/* Travel Expenses */}
+              <PaymentRequestList slugIdentifier={[programId, rfId, PRTypes.APF]} />
+            </>
+          ) : null}
+          {rfType === RequisitionFormEnum.TRAVEL ? (
+            <>
+              {/* Travel Expenses */}
+              <PaymentRequestList slugIdentifier={[programId, rfId, PRTypes.TE]} />
+            </>
+          ) : null}
+        </HorizontalTabs>
+      </ProgramRoleAccessControlProvider>
+
+      {/* Log Activity */}
+      <Drawer
+        isOpen={viewLogActivityDrawer}
+        setIsOpen={setViewLogActivityDrawer}
+        title="Log Activity"
+        description={requisitionFormDetail?.number.toUpperCase()}
+        icon={<FileSearch02Icon className="h-5 w-5 stroke-primary-600" />}
+        usingFooter={false}
+        drawerWidth="w-[28rem]"
+      >
+        <div id="log-activity-container">
+          {requisitionFormLogs?.map((log) => (
+            <div key={log.created_at} className="log-activity-card relative flex items-start gap-3">
+              <div className="shrink-0">
+                <Image
+                  className="h-12 w-12 rounded-full object-cover"
+                  src={log.user['avatar_url']}
+                  alt={log.user.employee_pass_photo}
+                  width={48}
+                  height={48}
+                />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-2">
+                  <p className="text-sm font-medium text-gray-700">{log.user.name}</p>
+                  <p className="text-xs text-gray-600">
+                    {isMoreThan24Hours(log?.created_at)
+                      ? dayjs(log?.created_at).local().format('dddd, DD MMM YYYY - HH:mm')
+                      : dayjs(log?.created_at).local().fromNow()}
+                  </p>
+                </div>
+                <SafeHtml className="render-html text-sm text-gray-600" html={log.message} />
+                {log.body ? <p className="mt-3 text-sm text-gray-600">“{log.body}”</p> : null}
+              </div>
+              <span className="absolute right-0 top-0 hidden h-2.5 w-2.5 rounded-full bg-success-500"></span>
+            </div>
+          ))}
+        </div>
+      </Drawer>
+
+      {/* Personal Hire Information Drawer */}
+      <Drawer
+        isOpen={personalHireDrawer}
+        setIsOpen={setPersonalHireDrawer}
+        title="Personnel Hire Information"
+        description={requisitionFormDetail?.number.toUpperCase()}
+        icon={<FileSearch02Icon className="h-5 w-5 stroke-primary-600" />}
+        drawerWidth="w-[28rem]"
+        usingFooter={false}
+      >
+        {requisitionFormDetail?.rf_type === RequisitionFormEnum.PERSONAL_HIRE ? (
+          <div className="flex flex-col gap-6">
+            <div>
+              <label className="input-label gap-wide">Notes (Optional)</label>
+              <div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {requisitionFormDetail?.rf_attributes.notes || '-'}
+                </p>
+              </div>
+            </div>
+            <div className="h-px w-full bg-gray-200"></div>
+            <div>
+              <label className="input-label gap-wide">Background Documents</label>
+              {requisitionFormDetail?.rf_attributes?.background_docs ? (
+                <FilePreview className="!mb-0" fileName={requisitionFormDetail?.rf_attributes?.background_docs[0]} />
+              ) : null}
+            </div>
+            <div>
+              <label className="input-label gap-wide">Hire Process Documents</label>
+              {requisitionFormDetail?.rf_attributes?.hire_process_docs ? (
+                <FilePreview className="!mb-0" fileName={requisitionFormDetail?.rf_attributes?.hire_process_docs[0]} />
+              ) : null}
+            </div>
+            <div>
+              <label className="input-label gap-wide">Principal of Offer Page Documents</label>
+              {requisitionFormDetail?.rf_attributes?.offer_page_docs ? (
+                <FilePreview className="!mb-0" fileName={requisitionFormDetail?.rf_attributes?.offer_page_docs[0]} />
+              ) : null}
+            </div>
+            <div>
+              <label className="input-label gap-wide">Other Documents (Optional)</label>
+              {requisitionFormDetail?.rf_attributes?.other_docs ? (
+                <div className="flex flex-col gap-4">
+                  {requisitionFormDetail?.rf_attributes?.other_docs.length > 0
+                    ? requisitionFormDetail?.rf_attributes?.other_docs.map((file: any, index: number) => (
+                        <div key={index}>
+                          <FilePreview fileName={file} />
+                        </div>
+                      ))
+                    : '-'}
+                </div>
+              ) : (
+                <p>-</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
+
+      {/* Travel Information Drawer */}
+      <Drawer
+        isOpen={travelInformationDrawer}
+        setIsOpen={setTravelInformationDrawer}
+        title="Travel Information"
+        description={requisitionFormDetail?.number.toUpperCase()}
+        icon={<FileSearch02Icon className="h-5 w-5 stroke-primary-600" />}
+        usingFooter={false}
+        drawerWidth="w-[28rem]"
+      >
+        {requisitionFormDetail?.rf_type === RequisitionFormEnum.TRAVEL ? (
+          <div className="flex flex-col gap-6">
+            <div>
+              <label className="input-label gap-wide">Location</label>
+              <p className="text-gray-600">{requisitionFormDetail?.rf_attributes?.additional_data.location || '-'}</p>
+            </div>
+            <div>
+              <label className="input-label gap-wide">Invitation Documents</label>
+              {requisitionFormDetail?.rf_attributes?.additional_data.invitation_path ? (
+                <FilePreview
+                  className="!mb-0"
+                  fileName={requisitionFormDetail?.rf_attributes?.additional_data.invitation_path[0]}
+                />
+              ) : null}
+            </div>
+            <div>
+              <label className="input-label gap-wide">ToR</label>
+              {requisitionFormDetail?.rf_attributes?.additional_data.tor_path ? (
+                <FilePreview
+                  className="!mb-0"
+                  fileName={requisitionFormDetail?.rf_attributes?.additional_data.tor_path[0]}
+                />
+              ) : null}
+            </div>
+            <div>
+              <label className="input-label gap-wide">Assigment Letter</label>
+              {requisitionFormDetail?.rf_attributes?.additional_data.assignment_letter_path ? (
+                <FilePreview
+                  className="!mb-0"
+                  fileName={requisitionFormDetail?.rf_attributes?.additional_data.assignment_letter_path[0]}
+                />
+              ) : null}
+            </div>
+            <div className="h-px w-full bg-gray-200"></div>
+            <div>
+              <label className="input-label gap-wide">Notes (Optional)</label>
+              <div>
+                <p className="text-gray-600">{requisitionFormDetail?.rf_attributes?.additional_data.notes || '-'}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
+
+      {/* Reject rf */}
+      <Modal
+        icon={<Save01Icon className="h-6 w-6 stroke-warning-600" />}
+        theme={theme.WARNING}
+        modalTitle="Reject this request?"
+        modalDescription="Please make sure to give reason why it rejected"
+        stateModal={isOpenModal.reject}
+        handleCloseModal={closeRejectConfirmationModal}
+      >
+        <form className="mt-6" onSubmit={handleSubmit(rejectHandler)}>
+          <textarea
+            {...register('rejection_note', {
+              required: 'Message is required field',
+            })}
+            id="decline-budget-notes"
+            className={cn(
+              'form-textarea w-full resize-none rounded-lg border px-3.5 py-3 text-gray-900 shadow-xs placeholder:text-gray-500 focus:ring-4 disabled:border-gray-300 disabled:bg-gray-50',
+              errors.rejection_note
+                ? 'border-error-300 focus:border-error-300 focus:ring-error-100'
+                : 'border-gray-300 focus:border-primary-300 focus:ring-primary-100',
+            )}
+            rows={5}
+            placeholder="Enter a message..."
+          ></textarea>
+          {errors.rejection_note && <span className="input-hint-text error">{errors.rejection_note?.message}</span>}
+          <div className="mt-8 flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              btnType="normal"
+              variant="secondary-gray"
+              className="w-full justify-center"
+              size="lg"
+              onClick={closeRejectConfirmationModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              btnType="normal"
+              variant="primary"
+              className="w-full justify-center"
+              size="lg"
+              isLoading={loadingButtonStatement.reject}
+            >
+              Confirm
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Multiple Perdiem Error Modal */}
+      <Modal
+        icon={<AlertTriangleIcon className="h-6 w-6 stroke-error-600" />}
+        theme={theme.ERROR}
+        modalTitle="Choose one only perdiem"
+        modalDescription=""
+        stateModal={isOpenModal.doublePerdiem}
+        modalSizeStyles="max-w-[25rem]"
+        handleCloseModal={() =>
+          setIsOpenModal((prev: ModalStatement) => ({
+            ...prev,
+            doublePerdiem: false,
+          }))
+        }
+      >
+        <div className="mt-1 text-sm text-gray-600">
+          <ul className="flex list-disc flex-col gap-0.5 px-6">
+            <li>
+              Custom wording disini need to talk to users, just base it on the space calculator pushback, so please
+              advise
+            </li>
+            <li>
+              Disini juga lorem need to talk to users, just base it on the space calculator pushback, so please advise
+            </li>
+          </ul>
+        </div>
+        <Button
+          type="button"
+          btnType="normal"
+          variant="secondary-gray"
+          className="mt-8 w-full justify-center"
+          size="md"
+          onClick={() =>
+            setIsOpenModal((prev: ModalStatement) => ({
+              ...prev,
+              doublePerdiem: false,
+            }))
+          }
+        >
+          Close
+        </Button>
+      </Modal>
+
+      {/* Payment Request Error Modal */}
+      <Modal
+        icon={<AlertTriangleIcon className="h-6 w-6 stroke-error-600" />}
+        theme={theme.ERROR}
+        modalTitle="Can't make Payment Request"
+        modalDescription=""
+        stateModal={isOpenModal.paymentRequest}
+        modalSizeStyles="max-w-[25rem]"
+        handleCloseModal={() =>
+          setIsOpenModal((prev: ModalStatement) => ({
+            ...prev,
+            paymentRequest: false,
+          }))
+        }
+      >
+        <div className="mt-1 text-sm text-gray-600">
+          <ul className="flex list-disc flex-col gap-0.5 px-6">
+            <li>
+              Your payment request have different kind of vendor type, please choose entry with same vendor type only
+            </li>
+            <li>
+              Make sure the vendor type is the same and you will just choose one specific vendor for this payment
+              request
+            </li>
+          </ul>
+        </div>
+        <Button
+          type="button"
+          btnType="normal"
+          variant="secondary-gray"
+          className="mt-8 w-full justify-center"
+          size="md"
+          onClick={() =>
+            setIsOpenModal((prev: ModalStatement) => ({
+              ...prev,
+              paymentRequest: false,
+            }))
+          }
+        >
+          Close
+        </Button>
+      </Modal>
+
+      {/* Close RF Modal */}
+      <Modal
+        icon={<AlertTriangleIcon className="h-6 w-6 stroke-error-600" />}
+        theme={theme.ERROR}
+        modalTitle="Are you sure to close the RF?"
+        modalDescription=""
+        stateModal={isOpenModal.closeRfConfirmationModal}
+        modalSizeStyles="max-w-[25rem]"
+        handleCloseModal={() =>
+          setIsOpenModal((prev: ModalStatement) => ({
+            ...prev,
+            closeRfConfirmationModal: false,
+          }))
+        }
+        modalButtons={[
+          <>
+            <Button
+              type="button"
+              btnType="normal"
+              variant="secondary-gray"
+              className="w-full justify-center"
+              size="lg"
+              onClick={hideCloseRfConfirmationModal}
+            >
+              Cancel
+            </Button>
+          </>,
+          <>
+            <Button
+              type="button"
+              btnType="normal"
+              variant="error"
+              className="w-full justify-center"
+              size="lg"
+              onClick={closeRfAction}
+              isLoading={loadingButtonStatement.closeRF}
+            >
+              Close the RF
+            </Button>
+          </>,
+        ]}
+      >
+        <div className="mt-1 text-sm text-gray-600">
+          <ul className="flex list-disc flex-col gap-0.5 px-6">
+            <li>Make sure no more Payment Request will be made from this Requisition Form.</li>
+            <li>
+              All the remaining RF will be transferred to the remaining budget in their respective budget needs item.
+            </li>
+            <li className="font-semibold underline">This action is irreversible</li>
+          </ul>
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal
+        icon={<AlertCircleIcon className="h-6 w-6 stroke-error-500" />}
+        theme={theme.ERROR}
+        modalTitle="Are you sure want to delete this RF?"
+        modalDescription="When you delete it, there is no way to undo the action. Please make sure you are aware that it will happen."
+        modalButtons={[
+          <>
+            <Button
+              type="button"
+              btnType="normal"
+              variant="secondary-gray"
+              className="w-full justify-center"
+              size="lg"
+              onClick={closeDeleteConfirmationModal}
+            >
+              Cancel
+            </Button>
+          </>,
+          <>
+            <Button
+              type="button"
+              btnType="normal"
+              variant="error"
+              className="w-full justify-center"
+              size="lg"
+              onClick={deletePayment}
+              isLoading={loadingButtonStatement.deleteRf}
+            >
+              Yes, Sure
+            </Button>
+          </>,
+        ]}
+        stateModal={isOpenModal.deleteConfirmationModal}
+        handleCloseModal={closeDeleteConfirmationModal}
+      />
+    </>
+  )
+}
