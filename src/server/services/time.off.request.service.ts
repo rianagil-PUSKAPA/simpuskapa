@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common'
 import { LeaveType, Prisma, TimeOffRequestStatus } from '@prisma/client'
 import { group, time } from 'console'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { Emblema_One } from 'next/font/google'
 import { argv0 } from 'process'
 import { EmployeeContractRepository } from '../repositories/employee.contract.repository'
@@ -16,6 +18,16 @@ import {
   TimeOffListDataResponse,
   TimeOffRow,
 } from '../types/time.off.request.dto'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+// All Time Off emails use Jakarta calendar dates, regardless of the EC2 server timezone.
+const formatTimeOffEmailDate = (value: string | Date | null | undefined, pattern = 'DD MMM YYYY'): string => {
+  if (!value) return '-'
+  const inJakarta = dayjs(value).tz('Asia/Jakarta')
+  return inJakarta.isValid() ? inJakarta.locale('en').format(pattern) : '-'
+}
 
 @Injectable()
 export class TimeOffRequestService {
@@ -111,7 +123,7 @@ export class TimeOffRequestService {
       await this.mailRepo.sendWorkflowToEmployees(
         [previous.employee_id],
         `Pengajuan Cuti ${message}`,
-        `Pengajuan cuti tanggal ${dayjs(previous.start_date).format('DD MMM YYYY')} sampai ${dayjs(previous.end_date).format('DD MMM YYYY')} telah ${message}.`,
+        `Pengajuan cuti tanggal ${formatTimeOffEmailDate(previous.start_date)} sampai ${formatTimeOffEmailDate(previous.end_date)} telah ${message}.`,
         'https://sim.puskapa.org/dashboard/internal/timeoff-request',
         'Lihat Status Cuti',
       )
@@ -161,8 +173,8 @@ export class TimeOffRequestService {
             ? 'Tidak ditampilkan untuk menjaga privasi'
             : previous.notes?.trim() || '-'
 
-          const start = previous.start_date ? dayjs(previous.start_date).format('DD/MM/YYYY') : '-'
-          const end = previous.end_date ? dayjs(previous.end_date).format('DD/MM/YYYY') : '-'
+          const start = previous.start_date ? formatTimeOffEmailDate(previous.start_date, 'DD/MM/YYYY') : '-'
+          const end = previous.end_date ? formatTimeOffEmailDate(previous.end_date, 'DD/MM/YYYY') : '-'
           const duration = previous.duration ?? '-'
           const requester = employee.full_name
           const picName = replacement?.full_name || 'Belum ditentukan'
@@ -186,14 +198,14 @@ export class TimeOffRequestService {
 
           const differentYear = Boolean(
             previous.start_date && previous.end_date &&
-            dayjs(previous.start_date).year() !== dayjs(previous.end_date).year(),
+            formatTimeOffEmailDate(previous.start_date, 'YYYY') !== formatTimeOffEmailDate(previous.end_date, 'YYYY'),
           )
           const subjectDateFormat = differentYear ? 'D MMM YYYY' : 'D MMM'
           const subjectStart = previous.start_date
-            ? dayjs(previous.start_date).locale('en').format(subjectDateFormat)
+            ? formatTimeOffEmailDate(previous.start_date, subjectDateFormat)
             : '-'
           const subjectEnd = previous.end_date
-            ? dayjs(previous.end_date).locale('en').format(subjectDateFormat)
+            ? formatTimeOffEmailDate(previous.end_date, subjectDateFormat)
             : '-'
 
           await this.mailRepo.sendWorkflowToAllActiveUsers(
@@ -236,7 +248,7 @@ export class TimeOffRequestService {
     // One announcement per collective leave event, not one per employee.
     await this.mailRepo.sendWorkflowToAllActiveUsers(
       'Informasi Cuti Bersama',
-      `Cuti bersama dijadwalkan pada ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')}.`,
+      `Cuti bersama dijadwalkan pada ${formatTimeOffEmailDate(startDate)} sampai ${formatTimeOffEmailDate(endDate)}.`,
       'https://sim.puskapa.org/dashboard/internal/timeoff/all',
       'Lihat Kalender Cuti',
     )
@@ -320,7 +332,7 @@ export class TimeOffRequestService {
         await this.mailRepo.sendWorkflowToEmployees(
           [supervisorId],
           'Permintaan Approval Cuti',
-          `${requester?.full_name || 'Staf'} mengajukan cuti ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')} dan membutuhkan persetujuan Anda.`,
+          `${requester?.full_name || 'Staf'} mengajukan cuti ${formatTimeOffEmailDate(startDate)} sampai ${formatTimeOffEmailDate(endDate)} dan membutuhkan persetujuan Anda.`,
           'https://sim.puskapa.org/dashboard/internal/timeoff/requests',
           'Tinjau Cuti',
         )
@@ -329,7 +341,7 @@ export class TimeOffRequestService {
       await this.mailRepo.sendWorkflowToEmployees(
         [employeeId],
         'Pengajuan Cuti Diterima',
-        `Pengajuan cuti Anda untuk ${dayjs(startDate).format('DD MMM YYYY')} sampai ${dayjs(endDate).format('DD MMM YYYY')} telah tercatat dan menunggu keputusan.`,
+        `Pengajuan cuti Anda untuk ${formatTimeOffEmailDate(startDate)} sampai ${formatTimeOffEmailDate(endDate)} telah tercatat dan menunggu keputusan.`,
         'https://sim.puskapa.org/dashboard/internal/timeoff-request',
         'Lihat Pengajuan Cuti',
       )
