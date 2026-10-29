@@ -1856,3 +1856,88 @@
     min-height: 42px;
   }
 }
+
+
+/* Project Detail v3.4 — budget dropdown visibility and neutral chevron button. */
+/* The previous unified summary card uses overflow:hidden in its visual styling.
+   That clips Headless UI Menu.Items even though the dropdown opens correctly. */
+.sim-project-detail-v2 .sim-pd-budget-summary {
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-summary > div:first-child {
+  position: relative;
+  z-index: 30;
+}
+.sim-project-detail-v2 .sim-pd-budget-summary > div:first-child .relative.inline-block {
+  position: relative;
+  z-index: 31;
+}
+.sim-project-detail-v2 .sim-pd-budget-summary > div:first-child [role="menu"] {
+  position: absolute;
+  z-index: 100 !important;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(300px, calc(100vw - 44px));
+  max-height: min(450px, 65vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e4e9f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(20, 35, 57, .17);
+}
+/* The clickable accordion trigger remains exactly the same functional control.
+   Only its appearance is restored to a white button with orange chevron. */
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  width: 46px !important;
+  height: 46px !important;
+  min-height: 46px;
+  padding: 0 !important;
+  border: 1px solid #dce3ed !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: #f47712 !important;
+  box-shadow: 0 1px 3px rgba(30, 45, 65, .04) !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger:hover {
+  border-color: #ffd4b0 !important;
+  background: #fff8f1 !important;
+  color: #df6908 !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger > .button,
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: inherit;
+  background: transparent !important;
+  color: #f47712 !important;
+  box-shadow: none !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger svg {
+  width: 20px;
+  height: 20px;
+  stroke: #f47712 !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger:hover svg {
+  stroke: #df6908 !important;
+}
+@media (max-width: 650px) {
+  .sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger {
+    flex-basis: 42px;
+    width: 42px !important;
+    height: 42px !important;
+    min-height: 42px;
+  }
+}
