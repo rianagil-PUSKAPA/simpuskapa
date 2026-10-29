@@ -53,11 +53,6 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
   const filteredPages = pageSearch.trim()
     ? quickPages.filter((page) => page.label.toLowerCase().includes(pageSearch.trim().toLowerCase()))
     : []
-  const pendingApprovalCount =
-    Number(personalizedNotifications?.need_approval_timeoff_total || 0) +
-    Number(personalizedNotifications?.need_approval_program_budget_total || 0) +
-    Number(personalizedNotifications?.need_approval_rf_total || 0) +
-    Number(personalizedNotifications?.need_approval_pr_total || 0)
 
   const [isOpenModal, setIsOpenModal] = useState<ModalStatement | null>({
     logout: false,
@@ -68,6 +63,12 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
     error: personalizedNotificationsError,
     trigger: personalizedNotificationsTrigger,
   } = useSWRMutation('personalizedNotifications', getPersonalizedNotification)
+
+  const pendingApprovalCount =
+    Number(personalizedNotifications?.need_approval_timeoff_total || 0) +
+    Number(personalizedNotifications?.need_approval_program_budget_total || 0) +
+    Number(personalizedNotifications?.need_approval_rf_total || 0) +
+    Number(personalizedNotifications?.need_approval_pr_total || 0)
 
   const closeLogOutModal = () => {
     setIsOpenModal((prev: ModalStatement) => ({ ...prev, logout: false }))
