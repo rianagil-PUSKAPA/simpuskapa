@@ -573,6 +573,17 @@ export const getSubmittedFundReceived = async (programId: string) => {
   return result?.data?.data as FundReceived[]
 }
 
+export const updateAnnualLeaveQuota = async (employeeId: string, quota: number): Promise<void> => {
+  const token = getCookie('auth_token')
+  await axios.put(
+    `${String(MAIN_URL_BE || '').replace(/\/$/, '')}/v1/timeoff/annual-timeoff/${encodeURIComponent(
+      employeeId,
+    )}/quota`,
+    { quota },
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+}
+
 export const getAnnualLeave = async (year: string) => {
   const result = await employeeTimeOffApi.timeOffControllerGetEmployeeAnnualTimeOffList(Number(year))
 
