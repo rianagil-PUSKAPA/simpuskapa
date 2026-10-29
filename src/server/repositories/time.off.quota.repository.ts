@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { CommonPrismaClient } from '@server/common/prisma.client'
-import { annual_timeoff_reset_history, Prisma, TimeOffRequestStatus, time_off_request } from '@prisma/client'
+import { annual_timeoff_reset_history, LeaveType, Prisma, TimeOffRequestStatus, time_off_request } from '@prisma/client'
 
 @Injectable()
 export class TimeOffQuotaRepository {
@@ -161,7 +161,12 @@ export class TimeOffQuotaRepository {
 
   async getUsedNotResetted(): Promise<{ employeeId: string; totalDuration: number | null }[]> {
     const records = await this.prisma.time_off_request.findMany({
-      where: { resetted_at: null },
+      where: {
+        resetted_at: null,
+        deleted_at: null,
+        status: TimeOffRequestStatus.approved,
+        leave_type: LeaveType.annual,
+      },
       select: {
         employee_id: true,
         duration: true,
@@ -169,7 +174,7 @@ export class TimeOffQuotaRepository {
     })
 
     const grouped = records.reduce((acc, record) => {
-      acc[record.employee_id] = (acc[record.employee_id] || 0) + record.duration
+      acc[record.employee_id] = (acc[record.employee_id] || 0) + (record.duration ?? 0)
       return acc
     }, {} as Record<string, number>)
 
@@ -200,7 +205,7 @@ export class TimeOffQuotaRepository {
     })
 
     const grouped = records.reduce((acc, record) => {
-      acc[record.employee_id] = (acc[record.employee_id] || 0) + record.duration
+      acc[record.employee_id] = (acc[record.employee_id] || 0) + (record.duration ?? 0)
       return acc
     }, {} as Record<string, number>)
 
