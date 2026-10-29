@@ -716,6 +716,7 @@ const AdvancePaymentStatement = ({ programDetail, aprDetail, totalFundReceived, 
           },
         ]}
       >
+        <div className="sim-modern-forms sim-modern-forms-payment">
         <form onSubmit={handleSubmit(submitAdvancePaymentStatement)}>
           <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             <div>
@@ -1246,6 +1247,7 @@ const AdvancePaymentStatement = ({ programDetail, aprDetail, totalFundReceived, 
             </div>
           </div>
         </form>
+        </div>
       </Dashboard>
 
       {/* Additional Attachment */}
