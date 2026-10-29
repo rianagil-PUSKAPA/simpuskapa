@@ -229,6 +229,7 @@ border-bottom:1.5px solid #edf0f5; padding-bottom:12px; margin-bottom:15px }
 .main-heading{ margin-bottom:14px; padding:12px 15px; border:1px solid #f2e0d1;
 background:#fff8f2; border-radius:8px }
 .section{ margin-top:13px; break-inside:avoid-page }
+.budget-section{ break-inside:auto }
 .section h2{ font-size:10px; font-weight:800; letter-spacing:.7px; color:#c5670e;
 text-transform:uppercase; margin:0 0 9px }
 .info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 18px }
@@ -283,7 +284,7 @@ box-shadow:0 7px 34px #d6dae0 } }
 <section class="section"><h2>Request Information</h2><div class="info-grid">${sections}</div></section>
 <section class="section"><h2>Amount Summary</h2><div class="amounts">${amounts}</div></section>
 <section class="section"><h2>Approval &amp; Process</h2>${workflowHtml(root)}</section>
-<section class="section"><h2>Budget Items</h2>${tableHtml(root)}</section>
+<section class="section budget-section"><h2>Budget Items</h2>${tableHtml(root)}</section>
 <div class="bottom"><section class="section"><h2>Supporting Documents</h2>${documentHtml(root)}</section>
 <div class="initial"><div class="initial-header">Initial / Reviewed by</div>
 <div class="initial-body">Name / initials: __________________</div></div></div>
