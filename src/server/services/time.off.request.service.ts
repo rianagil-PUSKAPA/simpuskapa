@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { LeaveType, Prisma, TimeOffRequestStatus } from '@prisma/client'
 import { group, time } from 'console'
 import dayjs from 'dayjs'
@@ -429,6 +429,26 @@ export class TimeOffRequestService {
     return true
   }
 
+  // Changes to quota must be explicit. Reading annual summaries must never modify balances.
+  async updateAnnualQuota(employeeId: string, quota: number): Promise<number> {
+    if (!Number.isInteger(quota) || quota < 0 || quota > 365) {
+      throw new BadRequestException('Annual leave quota must be a whole number between 0 and 365')
+    }
+
+    const employee = await this.employeeRepo.getEmployeeByIdSimple(employeeId)
+    if (!employee || employee.deleted_at) {
+      throw new NotFoundException('Employee not found')
+    }
+
+    const captured = await this.timeOffQuotaRepository.getCapturedAnnualByYear(String(new Date().getFullYear()))
+    if (captured) {
+      throw new BadRequestException('The current year has already been archived; quota cannot be edited')
+    }
+
+    await this.employeeRepo.updateEmployeeById(employeeId, { annual_quota: quota })
+    return quota
+  }
+
   async getAnnualTimeOffListRealtime(): Promise<EmployeeAnnualTimeOffRow[]> {
     const time_off_not_resetted = await this.timeOffQuotaRepository.getUsedNotResetted()
 
@@ -488,10 +508,6 @@ export class TimeOffRequestService {
 
       result.push(to)
 
-      // add remaining to next year
-      await this.employeeRepo.updateEmployeeById(employeeDetail.id, {
-        annual_quota: employeeDetail.annual_quota + to.remaining,
-      })
     }
     return result
   }
