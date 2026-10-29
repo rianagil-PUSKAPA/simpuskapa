@@ -729,3 +729,31 @@
 .sim-modern-sidebar.sidebar-dashboard.collapsed:hover .sim-finance-collapsed-counter {
   display: none;
 }
+
+/* Dashboard notification loading: never show false zeros before user data arrives. */
+.sim-notification-spinner {
+  display: inline-block;
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #ffd7b8;
+  border-top-color: #f57b16;
+  border-radius: 50%;
+  animation: sim-notification-spin .8s linear infinite;
+}
+.sim-notification-skeleton {
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #eef0f4 20%, #f9fafb 48%, #eef0f4 78%);
+  background-size: 220% 100%;
+  animation: sim-notification-shimmer 1.25s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes sim-notification-spin { to { transform: rotate(360deg); } }
+@keyframes sim-notification-shimmer { to { background-position-x: -220%; } }
+@media (prefers-reduced-motion: reduce) {
+  .sim-notification-spinner,
+  .sim-notification-skeleton { animation: none; }
+}
