@@ -122,29 +122,29 @@ export const ProjectActivityDetail = ({ slugIdentifier }: Props) => {
           </ProgramRoleAccessControlProvider>
         </div>
       ) : (
-        <div className="flex flex-col">
+        <div className="sim-pd-activity-groups flex flex-col">
           {projectActivityDetailData?.map((projectActivityDetail) => (
             <div
               key={projectActivityDetail.id}
-              className="flex items-start gap-5 border-b border-gray-200 py-10 first:pt-0"
+              className="sim-pd-activity-group flex items-start gap-5 border-b border-gray-200 py-10 first:pt-0"
             >
-              <div className="flex w-64 shrink-0 flex-col gap-1 2xl:w-80">
+              <div className="sim-pd-activity-group-title flex w-64 shrink-0 flex-col gap-1 2xl:w-80">
                 <span className="inline-block text-xs font-bold text-gray-500">
                   Activity ({projectActivityDetail.code})
                 </span>
                 <p className="text-xl font-semibold capitalize text-gray-900">{projectActivityDetail.description}</p>
               </div>
-              <div className="shrink grow">
+              <div className="sim-pd-activity-sublist shrink grow">
                 <Accordion
                   type="multiple"
-                  defaultValue={[...projectActivityDetail.activities.map((activity) => activity.id)]}
+                  defaultValue={[...projectActivityDetail.activities.slice(0, 1).map((activity) => activity.id)]}
                   className="flex flex-col gap-5"
                 >
                   {projectActivityDetail.activities.map((activity) => (
                     <AccordionItem
                       key={activity.id}
                       value={activity.id}
-                      className="rounded-lg border border-gray-200 py-4 pe-4 ps-6"
+                      className="sim-pd-activity-item rounded-lg border border-gray-200 py-4 pe-4 ps-6"
                     >
                       <AccordionTrigger>
                         <div className="flex w-full items-center gap-4">
@@ -162,7 +162,7 @@ export const ProjectActivityDetail = ({ slugIdentifier }: Props) => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="">
-                        <div className="mt-4 flex justify-between gap-5 p-4">
+                        <div className="sim-pd-activity-metadata mt-4 flex justify-between gap-5 p-4">
                           <div className="w-32">
                             <span className="mb-2 inline-block text-sm font-bold text-gray-500">Timeline</span>
                             <p className="text-sm text-gray-900">
