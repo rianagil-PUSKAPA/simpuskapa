@@ -89,7 +89,13 @@ function formNumber(root: HTMLElement): string {
 }
 
 function formTitle(root: HTMLElement): string {
-  return textOf(root.querySelector('h1')) || 'Form'
+  const title = textOf(root.querySelector('h1')) || 'Form'
+  if (!root.classList.contains('sim-modern-forms-rf')) return title
+
+  const requisitionType = findValue(root, ['Type of Requisition Form'])
+  if (!requisitionType || requisitionType === '—') return title
+
+  return `Requisition Form (${requisitionType})`
 }
 
 function workflowHtml(root: HTMLElement): string {
