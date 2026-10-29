@@ -80,6 +80,8 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
   )
 
   const [projectBudgets, setProjectBudgets] = useState<ProjectBudgetsImproved[]>([])
+  // Presentation-only expansion state; all budgeting and requisition handlers remain intact.
+  const [expandedProjects, setExpandedProjects] = useState<string[]>([])
 
   const [awaitCalculationDataIsDone, setAwaitCalculationDataIsDone] = useState(false)
 
@@ -234,10 +236,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
 
   return (
     <>
-      <div className="flex flex-col gap-9">
+      <div className="sim-pd-budget-list flex flex-col gap-9">
         {projectBudgets?.map((projectActivity) => (
-          <div key={projectActivity.id}>
-            <div className="flex items-center justify-between border-b border-b-gray-200 py-3">
+          <div key={projectActivity.id} className="sim-pd-budget-project">
+            <div className="sim-pd-budget-project-header flex items-center justify-between border-b border-b-gray-200 py-3">
               <div className="flex flex-col gap-1">
                 <span className="block text-xs font-bold text-gray-500">Activity ({projectActivity.code})</span>
                 <p className="text-xl font-semibold capitalize text-gray-900">{projectActivity.description}</p>
@@ -338,8 +340,26 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              className="sim-pd-budget-toggle"
+              aria-expanded={expandedProjects.includes(projectActivity.id)}
+              onClick={() =>
+                setExpandedProjects((current) =>
+                  current.includes(projectActivity.id)
+                    ? current.filter((id) => id !== projectActivity.id)
+                    : [...current, projectActivity.id],
+                )
+              }
+            >
+              {expandedProjects.includes(projectActivity.id) ? 'Hide budget details' : 'View budget details'}
+              <ChevronDownIcon
+                className={cn('h-4 w-4', expandedProjects.includes(projectActivity.id) && 'rotate-180')}
+              />
+            </button>
+            <div className="sim-pd-budget-project-details" hidden={!expandedProjects.includes(projectActivity.id)}>
             {approval === 'success' ? (
-              <div className="sticky top-0 z-10 flex justify-end border-b border-b-gray-200 bg-white py-[18px]">
+              <div className="sim-pd-budget-rf-actions sticky top-0 z-10 flex justify-end border-b border-b-gray-200 bg-white py-[18px]">
                 <div className="inline-flex items-center gap-3">
                   <p className="mr-9 text-gray-600">Create Request Form</p>
                   <Button
@@ -385,15 +405,15 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                 </div>
               </div>
             ) : null}
-            <div className="mt-6 border-l-4 border-l-primary-300 pb-3 pl-10 pt-4">
+            <div className="sim-pd-budget-activities mt-6 border-l-4 border-l-primary-300 pb-3 pl-10 pt-4">
               <Accordion
                 type="multiple"
                 className="flex w-full flex-col"
-                defaultValue={[...projectActivity.activities.map((activity) => activity.id)]}
+                defaultValue={[...projectActivity.activities.slice(0, 1).map((activity) => activity.id)]}
               >
                 {projectActivity.activities.map((activity) => (
                   <AccordionItem key={activity.id} value={activity.id} className="border-b border-b-gray-200 py-0">
-                    <div className="flex w-full items-center gap-4 py-6">
+                    <div className="sim-pd-budget-activity-row flex w-full items-center gap-4 py-6">
                       <span className="rounded bg-gray-100 px-8 py-0.5 font-semibold leading-6 text-gray-900">
                         {activity.code}
                       </span>
@@ -671,6 +691,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                   </AccordionItem>
                 ))}
               </Accordion>
+            </div>
             </div>
           </div>
         ))}
