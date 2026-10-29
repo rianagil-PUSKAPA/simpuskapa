@@ -483,7 +483,8 @@ export class TimeOffRequestService {
     // find captured data if not exist use realtime calculation
     const captured = await this.timeOffQuotaRepository.getCapturedAnnualByYear(year)
     if (!captured) {
-      return this.getAnnualTimeOffListRealtime()
+      // Without an archive we can only report the current, live annual cycle.
+      return Number(year) === new Date().getFullYear() ? this.getAnnualTimeOffListRealtime() : []
     }
 
     const result: EmployeeAnnualTimeOffRow[] = []
@@ -514,42 +515,36 @@ export class TimeOffRequestService {
 
   async resetAnnualTimeOffList(resetDate: string): Promise<boolean> {
     const resetAt = dayjs(resetDate).toDate()
-    const resetYear = dayjs(resetDate).toDate().getFullYear()
-
-    // get all timeoff between very last resetted annual and desired resets date
-    const last_reset = await this.timeOffQuotaRepository.getLastCapturedAnnualByYear()
-
-    if (last_reset.year == resetYear) {
-      throw new BadRequestException('Cant reset, you have been resetting, try next period')
+    if (Number.isNaN(resetAt.getTime())) {
+      throw new BadRequestException('Invalid reset date')
     }
 
-    const time_off_active = await this.timeOffQuotaRepository.getTimeOffBetweenDates(last_reset.reset_date, resetAt)
-
-    // capture
-    const annual_agregated_summary = await this.getAnnualTimeOffListRealtime()
-    const time_off_captured = []
-    for (const to of annual_agregated_summary) {
-      time_off_captured.push({
-        employee_id: to.employee_id,
-        used: to.used,
-        quota: to.quota,
-      })
+    const resetYear = resetAt.getFullYear()
+    const lastReset = await this.timeOffQuotaRepository.getLastCapturedAnnualByYear()
+    if (!lastReset?.year || !lastReset.reset_date) {
+      throw new BadRequestException('Annual cycle has not been initialized; an initial reset history is required')
+    }
+    if (lastReset.year >= resetYear) {
+      throw new BadRequestException('Annual leave cycle already reset for this period')
     }
 
-    await this.timeOffQuotaRepository.addAnnualCaptureHistory({
-      year: last_reset.year + 1,
-      captured: time_off_captured,
-      reset_date: resetAt,
-      reseted_by: '',
-    })
+    // Only completed, approved annual leave counts toward the closing-year snapshot.
+    const used = await this.timeOffQuotaRepository.getUsedNotResettedLessThan(resetAt)
+    const usedMap = new Map(used.map((item) => [item.employeeId, item.totalDuration ?? 0]))
+    const employees = await this.employeeRepo.getAllEmployee()
+    const captured = employees.map((employee) => ({
+      employee_id: employee.id,
+      used: usedMap.get(employee.id) ?? 0,
+      quota: employee.annual_quota ?? 0,
+    }))
 
-    // reset
-    for (const to of time_off_active) {
-      await this.timeOffQuotaRepository.updateTimeOffRequest(to.id, {
-        resetted_at: resetAt,
-      })
-    }
-
+    const completed = await this.timeOffQuotaRepository.getTimeOffBetweenDates(lastReset.reset_date, resetAt)
+    await this.timeOffQuotaRepository.applyAnnualReset(
+      lastReset.year + 1,
+      resetAt,
+      captured,
+      completed.map((item) => item.id),
+    )
     return true
   }
 }
