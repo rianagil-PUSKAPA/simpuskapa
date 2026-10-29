@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common'
 import { CommonPrismaClient } from '@server/common/prisma.client'
 import { annual_timeoff_reset_history, LeaveType, Prisma, TimeOffRequestStatus, time_off_request } from '@prisma/client'
 
@@ -258,7 +258,7 @@ export class TimeOffQuotaRepository {
     await this.prisma.$transaction(async (tx) => {
       const alreadyCaptured = await tx.annual_timeoff_reset_history.findFirst({ where: { year } })
       if (alreadyCaptured) {
-        throw new Error('Annual leave cycle has already been reset for this year')
+        throw new BadRequestException('Annual leave cycle has already been reset for this year')
       }
 
       await tx.annual_timeoff_reset_history.create({
@@ -275,12 +275,10 @@ export class TimeOffQuotaRepository {
       for (const item of captured) {
         // Existing policy carries unused days forward in addition to the current quota.
         const carryOver = item.quota - item.used
-        if (carryOver !== 0) {
-          await tx.employee.update({
-            where: { id: item.employee_id },
-            data: { annual_quota: { increment: carryOver } },
-          })
-        }
+        await tx.employee.update({
+          where: { id: item.employee_id },
+          data: { annual_quota: Math.max(0, item.quota + carryOver) },
+        })
       }
     })
   }
