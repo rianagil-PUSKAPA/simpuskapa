@@ -66,7 +66,9 @@ export const LogActivity = ({ globalLog: logData, logProgram, isUsedAtProject = 
           className="h-0 overflow-auto p-6 scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50"
         >
           {filteredProjectLogs.length === 0 && (
-            <div className="flex h-48 items-center justify-center rounded-xl bg-gray-50">No log activity</div>
+            <div className="flex h-48 items-center justify-center rounded-xl bg-gray-50">
+              {projectLogQuery ? 'No matching activity' : 'No log activity'}
+            </div>
           )}
           {filteredProjectLogs.map((log, index) => (
             <div key={index} className="log-activity-card relative flex items-start gap-3">
