@@ -333,8 +333,12 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     <span className="sim-modern-nav-inner"><File04Icon className="h-4 w-4 stroke-gray-500" /> Reporting</span>
                   </Link>
                   <Link
-                    href="/dashboard/finance/payment-request"
-                    title={financePendingCount && financePendingCount > 0 ? `${financePendingCount} payment requests pending` : 'Payment Request'}
+                    href={financePendingCount !== null && financePendingCount > 0
+                      ? '/dashboard/finance/payment-request?tab=pending'
+                      : '/dashboard/finance/payment-request'}
+                    title={financePendingCount !== null && financePendingCount > 0
+                      ? `View ${financePendingCount} pending payment requests`
+                      : 'Payment Request'}
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
                       activeSidebar === 'Payment Request' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
