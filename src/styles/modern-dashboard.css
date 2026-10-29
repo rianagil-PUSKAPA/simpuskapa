@@ -662,3 +662,21 @@
   .sim-profile-bottom > div { padding: 20px; }
   .sim-profile-person h2 { font-size: 18px; }
 }
+
+/* Notification fetch states: zero is shown only after successful per-user data. */
+.sim-profile-notification-state {
+  margin-bottom: 20px;
+  padding: 15px 18px;
+  border: 1px solid #ffe0c7;
+  border-radius: 13px;
+  background: #fff7f0;
+  color: #7b4b28;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sim-profile-notification-state button {
+  margin-left: 12px;
+  font-weight: 700;
+  color: #df6d00;
+  text-decoration: underline;
+}
