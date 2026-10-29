@@ -409,7 +409,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
               <Accordion
                 type="multiple"
                 className="flex w-full flex-col"
-                defaultValue={[...projectActivity.activities.slice(0, 1).map((activity) => activity.id)]}
+                defaultValue={[]}
               >
                 {projectActivity.activities.map((activity) => (
                   <AccordionItem key={activity.id} value={activity.id} className="border-b border-b-gray-200 py-0">
@@ -503,7 +503,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                           </Menu.Items>
                         </Transition>
                       </Menu>
-                      <AccordionTrigger>
+                      <AccordionTrigger className="sim-pd-budget-chevron-trigger">
                         <Button btnType="div" size="sm" variant="secondary-gray" btnFormat="square">
                           <div className="transition-transform duration-200 group-data-[state=open]:rotate-180">
                             <ChevronDownIcon className="h-5 w-5 stroke-gray-700" />
