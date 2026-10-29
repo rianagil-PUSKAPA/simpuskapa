@@ -29,6 +29,7 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
   const [pageSearch, setPageSearch] = useState('')
   const quickPages = [
     { label: 'Home', href: '/dashboard' },
+    { label: 'Profile Info', href: '/dashboard/user/profile-info' },
     { label: 'Project List', href: '/dashboard/project' },
     { label: 'Requisition Form', href: '/dashboard/procurement' },
     { label: 'Vendor Adm', href: '/dashboard/external/vendor-adm' },
