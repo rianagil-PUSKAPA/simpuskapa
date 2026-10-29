@@ -1,4 +1,10 @@
 import { resolveAuthToken } from '@/utils/ssrAuth'
+import { ArrowRightIcon } from '@/components/icon/ArrowRightIcon'
+import { BankNote01Icon } from '@/components/icon/BankNote01Icon'
+import { CalendarIcon } from '@/components/icon/CalendarIcon'
+import { File04Icon } from '@/components/icon/File04Icon'
+import { LayersThree02Icon } from '@/components/icon/LayersThree02Icon'
+import { CheckVerified01Icon } from '@/components/icon/CheckVerified01Icon'
 import { useDashboardContext } from '@/providers/DashboardProvider'
 import { RoleDefinition } from '@/shared/role.access'
 import { createAPIConfig } from '@/utils/apiAuthToken'
@@ -36,6 +42,27 @@ const Dashboard: any = dynamic(() => import('@/layout/Dashboard').then((mod) => 
 type Props = {
   log: Log[]
 }
+
+type DashboardMetricCardProps = {
+  href: string
+  label: string
+  value?: number | null
+  icon: React.ReactNode
+  tone: 'orange' | 'blue' | 'green' | 'purple'
+}
+
+const DashboardMetricCard = ({ href, label, value, icon, tone }: DashboardMetricCardProps) => (
+  <Link href={href} className={`sim-modern-metric sim-modern-metric--${tone}`}>
+    <span className="sim-modern-metric-icon" aria-hidden="true">{icon}</span>
+    <span className="sim-modern-metric-body">
+      <span className="sim-modern-metric-title">{label}</span>
+      <strong className="sim-modern-metric-value">{value ?? 0}</strong>
+    </span>
+    <span className="sim-modern-metric-arrow" aria-hidden="true">
+      <ArrowRightIcon className="h-4 w-4 stroke-primary-700" />
+    </span>
+  </Link>
+)
 
 const DashboardIndex = ({ log }: Props) => {
   const { userLoggedinInformation } = useDashboardContext()
@@ -124,6 +151,11 @@ const DashboardIndex = ({ log }: Props) => {
       : false
   }
 
+  const needActionTotal =
+    Number(personalizedNotifications?.need_action_rf_total || 0) +
+    Number(personalizedNotifications?.need_action_pr_check_total || 0) +
+    Number(personalizedNotifications?.need_action_pr_pay_total || 0)
+
   useEffect(() => {
     personalizedNotificationsTrigger()
   }, [])
@@ -136,16 +168,16 @@ const DashboardIndex = ({ log }: Props) => {
     <>
       <NextSeo title="Dashboard" canonical={`${MAIN_URL_FE}dashboard`} />
       <Dashboard breadcrumbLists={[{ title: 'Home', url: '' }]}>
-        <div className="p-7 xl:p-10">
-          <div className="mb-10">
+        <div className="sim-modern-home p-5 md:p-7 xl:p-10">
+          <div className="sim-modern-greeting mb-8">
             <p className="mb-2 text-2xl font-medium text-gray-700">{greeting},</p>
             <h1 className="text-3xl font-semibold text-primary-700">{userLoggedinInformation?.employee_name}</h1>
           </div>
-          <div className="grid grid-cols-2 items-stretch gap-10">
-            <div id="dashboard-left-side" className="flex flex-col gap-10">
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+            <div id="dashboard-left-side" className="flex flex-col gap-6">
               {/* Needs Approval */}
-              <div className="rounded-xl border border-gray-200 bg-white shadow-xs">
-                <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
+              <div className="sim-modern-panel rounded-2xl border border-gray-200 bg-white shadow-xs">
+                <div className="sim-modern-panel-header flex flex-wrap items-center justify-between gap-3 border-b border-b-gray-200 px-6 py-5">
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Needs Approval</p>
                     <Badge size="sm" color="primary" icon="none">
@@ -162,49 +194,41 @@ const DashboardIndex = ({ log }: Props) => {
                     </Button>
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-3 p-6">
-                  <Link
-                    href="/dashboard/user/need-approval?tab=timeoff-request"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Time Off Request</p>
-                    <p id="timeoff-request-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_approval_timeoff_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/need-approval?tab=program-budget"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Project Budget</p>
-                    <p id="program-budget-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_approval_program_budget_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/need-approval?tab=procurement-request"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Requisition Form</p>
-                    <p id="requisition-form-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_approval_rf_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/need-approval?tab=payment-request"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Payment Request</p>
-                    <p id="finance-request-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_approval_pr_total || 0}
-                    </p>
-                  </Link>
-                </div>
+                <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-approval?tab=timeoff-request"
+                      label="Time Off Request"
+                      value={personalizedNotifications?.need_approval_timeoff_total}
+                      icon={<CalendarIcon className="h-5 w-5 stroke-primary-600" />}
+                      tone="orange"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-approval?tab=program-budget"
+                      label="Project Budget"
+                      value={personalizedNotifications?.need_approval_program_budget_total}
+                      icon={<LayersThree02Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="blue"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-approval?tab=procurement-request"
+                      label="Requisition Form"
+                      value={personalizedNotifications?.need_approval_rf_total}
+                      icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="green"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-approval?tab=payment-request"
+                      label="Payment Request"
+                      value={personalizedNotifications?.need_approval_pr_total}
+                      icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="purple"
+                    />
+                  </div>
               </div>
 
               {/* Needs Action */}
-              <div className="rounded-xl border border-gray-200 bg-white shadow-xs">
-                <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
+              <div className="sim-modern-panel rounded-2xl border border-gray-200 bg-white shadow-xs">
+                <div className="sim-modern-panel-header flex flex-wrap items-center justify-between gap-3 border-b border-b-gray-200 px-6 py-5">
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Need Action</p>
                     <Badge size="sm" color="primary" icon="none">
@@ -220,40 +244,42 @@ const DashboardIndex = ({ log }: Props) => {
                     </Button>
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-3 p-6">
-                  <Link
-                    href="/dashboard/user/need-action?tab=requisition-form"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Requisition Form</p>
-                    <p id="requisition-form-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_action_rf_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/need-action?tab=payment-request-check"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Payment Request (Check)</p>
-                    <p id="payment-request-value-rev" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_action_pr_check_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/need-action?tab=payment-request-pay"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Payment Request (Pay)</p>
-                    <p id="payment-request-value-rev" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.need_action_pr_pay_total || 0}
-                    </p>
-                  </Link>
-                </div>
+                {personalizedNotifications && needActionTotal === 0 ? (
+                  <div className="sim-modern-empty">
+                    <span className="sim-modern-empty-icon"><CheckVerified01Icon className="h-7 w-7 stroke-gray-400" /></span>
+                    <strong>No items need action right now</strong>
+                    <p>You're all caught up! New items will appear here when action is needed.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-action?tab=requisition-form"
+                      label="Requisition Form"
+                      value={personalizedNotifications?.need_action_rf_total}
+                      icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="green"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-action?tab=payment-request-check"
+                      label="Payment Request (Check)"
+                      value={personalizedNotifications?.need_action_pr_check_total}
+                      icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="orange"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/need-action?tab=payment-request-pay"
+                      label="Payment Request (Pay)"
+                      value={personalizedNotifications?.need_action_pr_pay_total}
+                      icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="purple"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Request Tracking */}
-              <div className="rounded-xl border border-gray-200 bg-white shadow-xs">
-                <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
+              <div className="sim-modern-panel rounded-2xl border border-gray-200 bg-white shadow-xs">
+                <div className="sim-modern-panel-header flex flex-wrap items-center justify-between gap-3 border-b border-b-gray-200 px-6 py-5">
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Request Tracking</p>
                     <Badge size="sm" color="primary" icon="none">
@@ -267,31 +293,27 @@ const DashboardIndex = ({ log }: Props) => {
                     </Button>
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-3 p-6">
-                  <Link
-                    href="/dashboard/user/request-tracking?tab=requisition-form"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Requisition Form</p>
-                    <p id="requisition-form-value" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.tracking_rf_total || 0}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/dashboard/user/request-tracking?tab=payment-request"
-                    className="rounded-xl border border-r-gray-200 bg-white p-6"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-600">Payment Request</p>
-                    <p id="payment-request-value-rev" className="text-4xl font-semibold text-gray-900">
-                      {personalizedNotifications?.tracking_pr_total || 0}
-                    </p>
-                  </Link>
-                </div>
+                <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+                    <DashboardMetricCard
+                      href="/dashboard/user/request-tracking?tab=requisition-form"
+                      label="Requisition Form"
+                      value={personalizedNotifications?.tracking_rf_total}
+                      icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="green"
+                    />
+                    <DashboardMetricCard
+                      href="/dashboard/user/request-tracking?tab=payment-request"
+                      label="Payment Request"
+                      value={personalizedNotifications?.tracking_pr_total}
+                      icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
+                      tone="blue"
+                    />
+                  </div>
               </div>
 
               {/* Employee Timeoff */}
-              <div className="rounded-xl border border-gray-200 bg-white shadow-xs">
-                <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
+              <div className="sim-modern-panel rounded-2xl border border-gray-200 bg-white shadow-xs">
+                <div className="sim-modern-panel-header flex flex-wrap items-center justify-between gap-3 border-b border-b-gray-200 px-6 py-5">
                   <p className="text-lg font-semibold text-gray-900">Employee Time Off</p>
                   <div className="inline-flex items-center gap-6">
                     <div className="inline-flex items-center gap-2">
@@ -367,7 +389,7 @@ const DashboardIndex = ({ log }: Props) => {
                 </div>
               </div>
             </div>
-            <div>
+            <div className="sim-modern-activity">
               <LogActivity globalLog={log} />
             </div>
           </div>
