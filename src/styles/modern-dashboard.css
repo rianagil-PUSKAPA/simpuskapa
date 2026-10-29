@@ -246,3 +246,16 @@
   .sim-modern-panel-header { padding: 18px 17px; }
   .sim-modern-home .inline-flex.items-center.gap-6 { gap: 10px; flex-wrap: wrap; }
 }
+
+.sim-modern-sidebar .sim-modern-nav-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.sim-modern-sidebar .sim-modern-nav-inner svg { flex-shrink: 0; }
+.sim-modern-sidebar .sim-modern-nav-active .sim-modern-nav-inner svg path,
+.sim-modern-sidebar .sim-modern-nav-active .sim-modern-nav-inner svg circle,
+.sim-modern-sidebar .sim-modern-nav-active .sim-modern-nav-inner svg rect {
+  stroke: #ee7000;
+}
