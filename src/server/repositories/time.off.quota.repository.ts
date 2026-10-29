@@ -197,7 +197,13 @@ export class TimeOffQuotaRepository {
 
   async getUsedNotResettedLessThan(maxdate: Date): Promise<{ employeeId: string; totalDuration: number | null }[]> {
     const records = await this.prisma.time_off_request.findMany({
-      where: { resetted_at: null, end_date: { lt: maxdate } },
+      where: {
+        resetted_at: null,
+        deleted_at: null,
+        status: TimeOffRequestStatus.approved,
+        leave_type: LeaveType.annual,
+        end_date: { lte: maxdate },
+      },
       select: {
         employee_id: true,
         duration: true,
@@ -236,6 +242,46 @@ export class TimeOffQuotaRepository {
         year: 'desc',
       },
       take: 1,
+    })
+  }
+
+  /**
+   * Capture a completed cycle and apply carry-over once, as a single database transaction.
+   * This replaces the previous (unsafe) rollover side effect in the GET endpoint.
+   */
+  async applyAnnualReset(
+    year: number,
+    resetAt: Date,
+    captured: Array<{ employee_id: string; quota: number; used: number }>,
+    requestIds: string[],
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const alreadyCaptured = await tx.annual_timeoff_reset_history.findFirst({ where: { year } })
+      if (alreadyCaptured) {
+        throw new Error('Annual leave cycle has already been reset for this year')
+      }
+
+      await tx.annual_timeoff_reset_history.create({
+        data: { year, captured, reset_date: resetAt, reseted_by: '' },
+      })
+
+      if (requestIds.length > 0) {
+        await tx.time_off_request.updateMany({
+          where: { id: { in: requestIds }, resetted_at: null },
+          data: { resetted_at: resetAt },
+        })
+      }
+
+      for (const item of captured) {
+        // Existing policy carries unused days forward in addition to the current quota.
+        const carryOver = item.quota - item.used
+        if (carryOver !== 0) {
+          await tx.employee.update({
+            where: { id: item.employee_id },
+            data: { annual_quota: { increment: carryOver } },
+          })
+        }
+      }
     })
   }
 
