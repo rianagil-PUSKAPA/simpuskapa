@@ -375,6 +375,13 @@ export class TimeOffController {
     @Req() request: Request,
     @Res() response: Response,
   ): Promise<Response> {
+    // The Start New Year Cycle action is exposed to superadmins only in the UI;
+    // enforce the same restriction on the server.
+    const claims = JSON.parse(request.headers.authorization as string) as { role?: string[] }
+    if (!Array.isArray(claims.role) || !claims.role.includes('superadmin')) {
+      throw new ForbiddenException('Only Superadmin can reset annual leave cycles')
+    }
+
     const result = await this.timeOffService.resetAnnualTimeOffList(timeOffReset.reset_date)
 
     return response
