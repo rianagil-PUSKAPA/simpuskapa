@@ -66,6 +66,26 @@ const DashboardMetricCard = ({ href, label, value, icon, tone }: DashboardMetric
 
 const DashboardIndex = ({ log }: Props) => {
   const { userLoggedinInformation } = useDashboardContext()
+  const [todayDateLabel, setTodayDateLabel] = useState('')
+
+  useEffect(() => {
+    // Keep the display date aligned with PUSKAPA's Jakarta timezone.
+    const refreshDate = () => {
+      setTodayDateLabel(
+        new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Jakarta',
+          weekday: 'long',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }).format(new Date()),
+      )
+    }
+
+    refreshDate()
+    const interval = window.setInterval(refreshDate, 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   const [filtrationDate, setFiltrationDate] = useState<Date[]>([
     new Date(new Date().setDate(firstDayIndexWeek + 1)),
@@ -184,9 +204,21 @@ const DashboardIndex = ({ log }: Props) => {
       <NextSeo title="Dashboard" canonical={`${MAIN_URL_FE}dashboard`} />
       <Dashboard breadcrumbLists={[{ title: 'Home', url: '' }]}>
         <div className="sim-modern-home p-5 md:p-7 xl:p-10">
-          <div className="sim-modern-greeting mb-8">
-            <p className="mb-2 text-2xl font-medium text-gray-700">{greeting},</p>
-            <h1 className="text-3xl font-semibold text-primary-700">{userLoggedinInformation?.employee_name}</h1>
+          <div className="sim-home-welcome-row mb-8">
+            <div className="sim-modern-greeting">
+              <p className="mb-2 text-2xl font-medium text-gray-700">{greeting},</p>
+              <h1 className="text-3xl font-semibold text-primary-700">{userLoggedinInformation?.employee_name}</h1>
+            </div>
+            <div className="sim-home-date-quote" aria-label="Today's date and greeting">
+              <span className="sim-home-date-icon" aria-hidden="true">
+                <CalendarIcon className="h-5 w-5 stroke-primary-600" />
+              </span>
+              <div className="sim-home-date-copy">
+                <strong>{todayDateLabel || 'Today'}</strong>
+                <p>Have a productive day!</p>
+              </div>
+              <span className="sim-home-quote-decoration" aria-hidden="true">“</span>
+            </div>
           </div>
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
             <div id="dashboard-left-side" className="flex flex-col gap-6">
