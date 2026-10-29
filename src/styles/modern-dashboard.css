@@ -131,7 +131,8 @@
   border-radius: 22px;
   background: #fff;
   box-shadow: 0 7px 24px rgba(25, 43, 68, .035);
-  overflow: hidden;
+  /* Keep popovers/date pickers visible above the card boundary. */
+  overflow: visible;
 }
 .sim-modern-panel-header {
   border-bottom: 1px solid #f0f2f6;
@@ -233,4 +234,15 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .sim-modern-shell *, .sim-modern-sidebar * { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Custom SVG icon components assign Tailwind stroke classes to paths.
+   Match each tile icon's muted accent to its card tone. */
+.sim-modern-metric--orange .sim-modern-metric-icon svg path { stroke: #f47700; }
+.sim-modern-metric--blue .sim-modern-metric-icon svg path { stroke: #3679ef; }
+.sim-modern-metric--green .sim-modern-metric-icon svg path { stroke: #159653; }
+.sim-modern-metric--purple .sim-modern-metric-icon svg path { stroke: #864fe0; }
+@media (max-width: 640px) {
+  .sim-modern-panel-header { padding: 18px 17px; }
+  .sim-modern-home .inline-flex.items-center.gap-6 { gap: 10px; flex-wrap: wrap; }
 }
