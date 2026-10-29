@@ -1214,6 +1214,20 @@
   box-shadow: none;
 }
 .sim-project-detail-v2 [role="tabpanel"] > div { min-width: 0; }
+.sim-project-detail-v2 .sim-pd-information-heading { margin: 0 0 18px; }
+.sim-project-detail-v2 .sim-pd-information-heading h2 {
+  margin: 0 0 5px;
+  color: #17233a;
+  font-size: 23px;
+  font-weight: 790;
+  letter-spacing: -.025em;
+  line-height: 1.3;
+}
+.sim-project-detail-v2 .sim-pd-information-heading p {
+  margin: 0;
+  color: #8794a5;
+  font-size: 13px;
+}
 /* Information: two real content columns matching the v2 HTML prototype. */
 .sim-project-detail-v2 .sim-pd-information-layout {
   display: flex;
