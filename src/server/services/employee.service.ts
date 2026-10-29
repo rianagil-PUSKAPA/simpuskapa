@@ -62,7 +62,7 @@ export class EmployeeService {
   async updateEmployee(ctx: ApplicationContext, id: string, employeeReq: EmployeeUpdateRequest): Promise<string> {
     const payload = { ...employeeReq } as Prisma.employeeUncheckedUpdateInput
     // Quotas must be changed only via the admin-authorized annual leave endpoint.
-    delete (payload as Record<string, unknown>).annual_quota
+    delete payload.annual_quota
     const employee = await this.employeeRepo.updateEmployeeById(id, payload)
 
     return employee.id
