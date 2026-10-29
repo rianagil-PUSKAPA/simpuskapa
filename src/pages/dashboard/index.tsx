@@ -56,7 +56,7 @@ const DashboardMetricCard = ({ href, label, value, icon, tone }: DashboardMetric
     <span className="sim-modern-metric-icon" aria-hidden="true">{icon}</span>
     <span className="sim-modern-metric-body">
       <span className="sim-modern-metric-title">{label}</span>
-      <strong className="sim-modern-metric-value">{value === null || value === undefined ? '—' : value}</strong>
+      <strong className="sim-modern-metric-value">{value === undefined ? <span className="sim-notification-skeleton" role="status" aria-label="Loading count" /> : value === null ? '—' : value}</strong>
     </span>
     <span className="sim-modern-metric-arrow" aria-hidden="true">
       <ArrowRightIcon className="h-4 w-4 stroke-primary-700" />
@@ -84,7 +84,13 @@ const DashboardIndex = ({ log }: Props) => {
     isMutating: notificationsLoading,
   } = useSWRMutation(
     'personalizedNotifications',
-    getPersonalizedNotification,
+    async () => {
+      const result = await getPersonalizedNotification()
+      if (!result || typeof result !== 'object' || typeof result.need_approval_rf_total !== 'number') {
+        throw new Error('Notifications were not available')
+      }
+      return result
+    },
   )
 
   const { data: employeeTimeoffData, trigger: employeeTimeoffTrigger } = useSWRMutation(
@@ -166,7 +172,7 @@ const DashboardIndex = ({ log }: Props) => {
     Number(personalizedNotifications?.need_action_pr_pay_total || 0)
 
   useEffect(() => {
-    personalizedNotificationsTrigger()
+    void personalizedNotificationsTrigger().catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -205,12 +211,13 @@ const DashboardIndex = ({ log }: Props) => {
                   </Link>
                 </div>
                 {!notificationReady && (
-                  <div className="mx-5 mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status">
+                  <div className="mx-5 mt-5 flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status">
+                    {!notificationsUnavailable && <span className="sim-notification-spinner" aria-hidden="true" />}
                     {notificationsUnavailable
                       ? 'Approval counts could not be loaded. Please retry; your request records have not been changed.'
                       : 'Loading approval counts for your account...'}
                     {notificationsUnavailable && (
-                      <button type="button" onClick={() => personalizedNotificationsTrigger()} className="ml-3 font-semibold text-primary-700 underline">
+                      <button type="button" onClick={() => { void personalizedNotificationsTrigger().catch(() => undefined) }} className="ml-3 font-semibold text-primary-700 underline">
                         Retry
                       </button>
                     )}
@@ -220,28 +227,28 @@ const DashboardIndex = ({ log }: Props) => {
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=timeoff-request"
                       label="Time Off Request"
-                      value={notificationReady ? Number(personalizedNotifications?.need_approval_timeoff_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_timeoff_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<CalendarIcon className="h-5 w-5 stroke-primary-600" />}
                       tone="orange"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=program-budget"
                       label="Project Budget"
-                      value={notificationReady ? Number(personalizedNotifications?.need_approval_program_budget_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_program_budget_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<LayersThree02Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="blue"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=procurement-request"
                       label="Requisition Form"
-                      value={notificationReady ? Number(personalizedNotifications?.need_approval_rf_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_rf_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=payment-request"
                       label="Payment Request"
-                      value={notificationReady ? Number(personalizedNotifications?.need_approval_pr_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_pr_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="purple"
                     />
@@ -274,21 +281,21 @@ const DashboardIndex = ({ log }: Props) => {
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=requisition-form"
                       label="Requisition Form"
-                      value={notificationReady ? Number(personalizedNotifications?.need_action_rf_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_rf_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=payment-request-check"
                       label="Payment Request (Check)"
-                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_check_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_check_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="orange"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=payment-request-pay"
                       label="Payment Request (Pay)"
-                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_pay_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_pay_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="purple"
                     />
@@ -318,14 +325,14 @@ const DashboardIndex = ({ log }: Props) => {
                     <DashboardMetricCard
                       href="/dashboard/user/request-tracking?tab=requisition-form"
                       label="Requisition Form"
-                      value={notificationReady ? Number(personalizedNotifications?.tracking_rf_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.tracking_rf_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/request-tracking?tab=payment-request"
                       label="Payment Request"
-                      value={notificationReady ? Number(personalizedNotifications?.tracking_pr_total || 0) : undefined}
+                      value={notificationReady ? Number(personalizedNotifications?.tracking_pr_total || 0) : notificationsUnavailable ? null : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="blue"
                     />
