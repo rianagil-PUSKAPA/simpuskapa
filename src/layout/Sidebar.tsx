@@ -299,10 +299,19 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     isCollapsed ? 'mx-auto mb-0 h-11 w-11 justify-center border-gray-200' : 'mb-3 border-transparent',
                   )}
                 >
-                  <div className="shrink-0">
+                  <div className="relative shrink-0">
                     <BankNote01Icon
                       className={cn(isCollapsed ? 'h-5 w-5 stroke-gray-500' : 'h-4 w-4 stroke-gray-400')}
                     />
+                    {isCollapsed && canSeeFinancePending && financePendingCount !== null && financePendingCount > 0 && (
+                      <span
+                        className="sim-finance-collapsed-counter"
+                        title={`${financePendingCount} pending payments`}
+                        aria-label={`${financePendingCount} pending payments`}
+                      >
+                        {financePendingCount > 99 ? '99+' : financePendingCount}
+                      </span>
+                    )}
                   </div>
                   <p
                     className={cn(
