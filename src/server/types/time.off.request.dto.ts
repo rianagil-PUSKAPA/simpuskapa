@@ -3,6 +3,11 @@ import { LeaveType, TimeOffRequestStatus } from '@prisma/client'
 import { extend } from 'dayjs'
 import { HttpBaseResponse } from './base.response.dto'
 
+export class UpdateAnnualQuotaDto {
+  @ApiProperty({ type: 'integer', minimum: 0, maximum: 365 })
+  quota: number
+}
+
 export class ResetTimeOffRequestDto {
   @ApiProperty({ type: 'string', example: '2025-01-01 00:00:00' })
   reset_date: string
