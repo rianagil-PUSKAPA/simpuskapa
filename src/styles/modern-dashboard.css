@@ -680,3 +680,27 @@
   color: #df6d00;
   text-decoration: underline;
 }
+
+/* Finance Pending notification — small status dot with real Pending tab count. */
+.sim-finance-pending-indicator {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+  margin-left: auto;
+}
+.sim-finance-pending-indicator::before {
+  display: block;
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  content: '';
+}
+.sim-finance-pending-indicator > span {
+  min-width: 20px;
+  margin-left: 0;
+  background: #ef4444;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, .16);
+}
