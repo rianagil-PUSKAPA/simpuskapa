@@ -6,6 +6,7 @@ import {
   Delete,
   Get,
   HttpStatus,
+  ForbiddenException,
   Logger,
   Param,
   Patch,
@@ -40,6 +41,7 @@ import { Request, Response } from 'express'
 import {
   AnnualTimeOffListDataResponse,
   ResetTimeOffRequestDto,
+  UpdateAnnualQuotaDto,
   TimeOff,
   TimeOffDetailResponse,
   TimeOffListDataResponse,
@@ -332,6 +334,32 @@ export class TimeOffController {
     return response
       .status(HttpStatus.OK)
       .send(new AnnualTimeOffListDataResponse(this.lang.lang(LD.RESPONSE_CREATED, ['Annual Time Off']), result))
+  }
+
+  @Put('/v1/timeoff/annual-timeoff/:employeeId/quota')
+  @ApiTags(TimeOffController.apiTags)
+  @ApiOperation({ summary: 'Update current-year annual leave quota (admin only)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'employeeId', type: 'string' })
+  @ApiBody({ type: UpdateAnnualQuotaDto })
+  @ApiOkResponse({ type: HttpBaseResponse })
+  async updateEmployeeAnnualQuota(
+    @Param('employeeId') employeeId: string,
+    @Body() input: UpdateAnnualQuotaDto,
+    @Req() request: Request,
+    @Res() response: Response,
+  ): Promise<Response> {
+    // JWT was verified by AuthJwtMiddleware, which places the verified claims in this header.
+    const claims = JSON.parse(request.headers.authorization as string) as { role?: string[] }
+    if (
+      !Array.isArray(claims.role) ||
+      !claims.role.some((role) => role === 'admin' || role === 'superadmin')
+    ) {
+      throw new ForbiddenException('Only Admin or Superadmin can change annual leave quotas')
+    }
+
+    const quota = await this.timeOffService.updateAnnualQuota(employeeId, input?.quota)
+    return response.status(HttpStatus.OK).send(new HttpBaseResponse('Annual leave quota updated', quota))
   }
 
   @Post('/v1/timeoff/annual-timeoff-reset')
