@@ -1941,3 +1941,252 @@
     min-height: 42px;
   }
 }
+
+/* Modern RF / PR forms v1 — page-scoped presentation only. */
+.sim-modern-forms {
+  --sf-accent: #f47712;
+  --sf-ink: #24334a;
+  --sf-muted: #7a8ba3;
+  --sf-border: #e4eaf1;
+  width: 100%;
+  max-width: 1740px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(16px, 2.2vw, 32px) clamp(16px, 2.6vw, 42px) 62px;
+  color: var(--sf-ink);
+  font-size: 14px;
+}
+.sim-modern-forms,
+.sim-modern-forms *,
+.sim-modern-forms *::before,
+.sim-modern-forms *::after { box-sizing: border-box; }
+.sim-modern-forms > form { min-width: 0; width: 100%; }
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 24px;
+  min-width: 0;
+  margin: 0 0 20px;
+  padding: 22px 26px !important;
+  border: 1px solid var(--sf-border) !important;
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 98% 10%, rgba(244,119,18,.065), transparent 32%),
+    #fff;
+  box-shadow: 0 8px 28px rgba(36,50,74,.045);
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] > div:first-child {
+  min-width: 230px;
+  flex: 1 1 320px;
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] h1 {
+  margin: 0;
+  color: #17243b;
+  font-size: clamp(23px, 2vw, 29px);
+  font-weight: 770;
+  letter-spacing: -.03em;
+  line-height: 1.33;
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] > div:last-child {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  min-width: 0;
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] :is(button,a > div) {
+  min-height: 39px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] :is(button,a) {
+  white-space: normal;
+}
+.sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] [role="menu"] {
+  max-height: min(68vh, 530px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: min(340px, calc(100vw - 36px));
+  border: 1px solid var(--sf-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 15px 38px rgba(31,47,75,.17);
+  z-index: 50;
+}
+/* All RF types and regular PR input use the existing actual forms and validators. */
+.sim-modern-forms > form > [class~="p-7"][class~="xl:p-10"],
+.sim-modern-forms > [class~="p-7"][class~="xl:p-10"] {
+  min-width: 0;
+  padding: 27px 28px !important;
+  border: 1px solid var(--sf-border);
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(36,50,74,.043);
+}
+.sim-modern-forms [role="tablist"] {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 0 12px !important;
+  overflow-x: auto;
+  border: 1px solid var(--sf-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 7px 24px rgba(36,50,74,.038);
+  scrollbar-width: thin;
+}
+.sim-modern-forms [role="tablist"] [role="tab"] {
+  flex-shrink: 0;
+  min-height: 53px;
+  padding: 14px 15px 12px;
+  margin: 0;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: #667991;
+  background: transparent;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 650;
+}
+.sim-modern-forms [role="tablist"] [role="tab"][aria-selected="true"] {
+  border-bottom-color: #f47712;
+  color: #e47010;
+  background: transparent;
+}
+.sim-modern-forms [role="tablist"] + div {
+  margin-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.sim-modern-forms [role="tabpanel"] {
+  min-width: 0;
+  width: 100%;
+  padding: 24px 27px 28px;
+  border: 1px solid var(--sf-border);
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(36,50,74,.043);
+}
+.sim-modern-forms [role="tabpanel"] > div { min-width: 0; }
+.sim-modern-forms [role="tabpanel"] > div > [class~="px-10"][class~="py-8"] {
+  padding: 0 !important;
+}
+.sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] {
+  min-width: 0;
+  gap: 18px 22px;
+  padding: 19px 20px !important;
+  margin-top: 15px;
+  border: 1px solid #edf0f4;
+  border-radius: 14px;
+  background: #fafbfc;
+}
+.sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sim-modern-forms .text-xs.font-bold.text-gray-500,
+.sim-modern-forms label.text-xs.font-bold.text-gray-500 {
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: .005em;
+  color: var(--sf-muted);
+}
+.sim-modern-forms p.text-xl.font-semibold.text-gray-900,
+.sim-modern-forms h2.text-lg.font-semibold.text-gray-900,
+.sim-modern-forms .text-lg.font-semibold.uppercase.text-gray-900 {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 690;
+  color: #2c3b54;
+  overflow-wrap: anywhere;
+}
+.sim-modern-forms input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.sim-modern-forms textarea,
+.sim-modern-forms select {
+  max-width: 100%;
+  border-radius: 10px;
+}
+.sim-modern-forms :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),textarea,select):focus-visible,
+.sim-modern-forms :is(button,a):focus-visible {
+  outline: 2px solid #f47712;
+  outline-offset: 2px;
+}
+.sim-modern-forms .table-container {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--sf-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.sim-modern-forms .table-wrapper,
+.sim-modern-forms .top-scrollbar {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-color: #c9d3df #f8fafc;
+}
+.sim-modern-forms .table-selection {
+  min-width: max-content;
+}
+.sim-modern-forms .table-container [class~="bg-gray-50"] {
+  background: #f7f9fc;
+}
+.sim-modern-forms .table-container :is(p,span) {
+  line-height: 1.55;
+}
+.sim-modern-forms .stepper-progress {
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sim-modern-forms [class*="rounded-full"][class*="bg-success"] {
+  font-weight: 650;
+}
+/* Keep all data/checkbox columns and original horizontal scroll functionality. */
+@media (max-width: 1120px) {
+  .sim-modern-forms { padding: 17px 18px 45px; }
+  .sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] {
+    gap: 14px;
+    padding: 17px !important;
+  }
+}
+@media (max-width: 860px) {
+  .sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] { padding: 20px !important; }
+  .sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] > div:last-child {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] > [class~="col-span-2"] {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 580px) {
+  .sim-modern-forms { padding: 12px 11px 32px; }
+  .sim-modern-forms > form > [class~="p-7"][class~="xl:p-10"],
+  .sim-modern-forms > [class~="p-7"][class~="xl:p-10"],
+  .sim-modern-forms [role="tabpanel"] { padding: 15px !important; }
+  .sim-modern-forms [class~="px-7"][class~="py-5"][class~="border-b-gray-200"] {
+    padding: 17px 15px !important;
+  }
+  .sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px !important;
+  }
+  .sim-modern-forms :is([class~="grid-cols-3"],[class~="grid-cols-4"])[class~="gap-5"][class~="border-b-gray-200"][class~="py-6"] > [class~="col-span-2"] {
+    grid-column: span 1;
+  }
+  .sim-modern-forms [role="tablist"] { padding-inline: 5px !important; }
+  .sim-modern-forms [role="tablist"] [role="tab"] { padding: 11px; font-size: 12px; min-height: 45px; }
+}
