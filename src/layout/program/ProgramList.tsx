@@ -481,6 +481,7 @@ export const ProgramList = ({ program_ownership_type }: Props) => {
           },
         ]}
       >
+        <div className={cn(program_ownership_type === ProgramCreateRequestProgramOwnershipTypeEnum.Program && 'sim-project-list-v2')}>
         <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">
@@ -488,6 +489,9 @@ export const ProgramList = ({ program_ownership_type }: Props) => {
                 ? 'Project List'
                 : 'Internal Needs'}
             </h1>
+            {program_ownership_type === ProgramCreateRequestProgramOwnershipTypeEnum.Program && (
+              <p className="sim-project-list-description">Explore your projects, monitor financial progress, and manage project information.</p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-4">
             <Link href={'/dashboard/project/add'} passHref>
@@ -570,6 +574,7 @@ export const ProgramList = ({ program_ownership_type }: Props) => {
                   ]
             }
           />
+        </div>
         </div>
       </Dashboard>
       <Modal
