@@ -160,7 +160,7 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
           <Breadcrumb type="arrow" activeState="badge" breadcrumbLists={breadcrumbLists} />
           <div className="sim-modern-header-tools">
             <div className="sim-modern-search">
-              <SearchIcon className="sim-modern-search-icon h-5 w-5" />
+              <span className="sim-modern-search-icon"><SearchIcon className="h-5 w-5 stroke-gray-500" /></span>
               <input
                 type="search"
                 aria-label="Search pages"
@@ -197,7 +197,7 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
               title="View pending approvals"
               className="sim-modern-icon-button"
             >
-              <Bell01Icon className="h-5 w-5" />
+              <Bell01Icon className="h-5 w-5 stroke-gray-600" />
               {pendingApprovalCount > 0 && <span className="sim-modern-notification-dot" />}
             </Link>
             <Menu as="div" className="relative ml-1 inline-block text-left">
