@@ -1,0 +1,236 @@
+/* SIM PUSKAPA Modern Orange — visual layer only.
+   Scoped to dashboard layouts, no changes to business or approval logic. */
+.sim-modern-shell {
+  background: #f7f8fa;
+  color: #253044;
+  min-height: 100vh;
+}
+.sim-modern-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  min-height: 78px;
+  background: #ffffff;
+  border-bottom: 1px solid #edf0f4;
+  box-shadow: 0 1px 0 rgba(18, 29, 46, .025);
+}
+.sim-modern-header-tools { display: flex; align-items: center; gap: 12px; }
+.sim-modern-icon-button {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 1px solid #e8ecf1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #45546b;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+.sim-modern-icon-button:hover { background: #fff4ea; border-color: #ffd9bc; transform: translateY(-1px); }
+.sim-modern-icon-button:focus-visible,
+.sim-modern-search-input:focus-visible,
+.sim-modern-sidebar a:focus-visible,
+.sim-modern-sidebar button:focus-visible {
+  outline: 2px solid #f57d24;
+  outline-offset: 2px;
+}
+.sim-modern-notification-dot {
+  position: absolute; top: 8px; right: 8px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ff7b00; box-shadow: 0 0 0 2px #ffffff;
+}
+.sim-modern-search { position: relative; width: min(300px, 30vw); }
+.sim-modern-search-input {
+  width: 100%; min-height: 43px; padding: 0 16px 0 43px;
+  border: 1px solid #e6eaf0; border-radius: 999px;
+  background: #f9fafc; color: #1d2939;
+  font-size: 13px; outline: 0;
+  transition: background .2s, border-color .2s, box-shadow .2s;
+}
+.sim-modern-search-input:focus { border-color: #ffba88; background: #fff; box-shadow: 0 0 0 3px #fff2e8; }
+.sim-modern-search-icon { position: absolute; top: 12px; left: 16px; color: #7b8798; pointer-events: none; }
+.sim-modern-search-results {
+  position: absolute; top: calc(100% + 9px); left: 0; right: 0;
+  z-index: 35; border: 1px solid #e9edf3; border-radius: 16px;
+  padding: 7px; background: white;
+  box-shadow: 0 18px 45px rgba(28, 39, 59, .12);
+}
+.sim-modern-search-results a {
+  display: block; padding: 10px 12px; border-radius: 10px;
+  color: #344054; font-size: 13px; font-weight: 600;
+}
+.sim-modern-search-results a:hover, .sim-modern-search-results a:focus-visible { background: #fff1e6; color: #dd6500; }
+.sim-modern-search-results p { padding: 10px 12px; color: #667085; font-size: 13px; }
+
+.sim-modern-sidebar.sidebar-dashboard {
+  border-right: 1px solid #edf0f4;
+  background: #fff;
+  box-shadow: 5px 0 30px rgba(23, 34, 50, .018);
+}
+.sim-modern-sidebar > div:nth-child(2) {
+  margin-top: 76px;
+  padding-bottom: 30px;
+}
+.sim-modern-sidebar ul.flex.flex-col {
+  padding: 24px 16px;
+  gap: 24px;
+}
+.sim-modern-sidebar ul > li > div:first-child {
+  border: 0;
+}
+.sim-modern-sidebar ul > li > div:first-child p {
+  color: #8692a6;
+  letter-spacing: .065em;
+  font-size: 11px;
+  font-weight: 800;
+}
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > a,
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > div.cursor-pointer {
+  display: block;
+  min-height: 43px;
+  padding: 11px 14px;
+  margin-top: 2px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #46536a;
+  transition: background .2s, color .2s, transform .2s;
+}
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > a:hover,
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > div.cursor-pointer:hover {
+  background: #f7f8fa;
+  color: #1d2939;
+  transform: translateX(2px);
+}
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > .sim-modern-nav-active,
+.sim-modern-sidebar ul > li .flex.flex-col.gap-1 > .sim-modern-nav-active:hover {
+  background: #fff0e5;
+  color: #ee7000;
+}
+.sim-modern-sidebar .sim-modern-nav-active .sim-nav-item-icon { color: #ee7000; }
+.sim-modern-sidebar .sim-sidebar-brand {
+  border-color: #edf0f4;
+  background: #fff;
+}
+.sim-modern-sidebar .sim-sidebar-brand p { color: #2f3b51; letter-spacing: -.02em; }
+.sim-modern-sidebar .sim-sidebar-brand button {
+  border-radius: 12px; border-color: #e7ebf0;
+  background: #fff; box-shadow: 0 2px 5px rgba(25, 34, 50, .025);
+}
+.sim-modern-sidebar .sim-sidebar-brand button:hover { background: #fff1e7; border-color: #ffceb0; }
+
+.sim-modern-home { max-width: 1800px; margin-inline: auto; }
+.sim-modern-greeting { margin-bottom: 26px; }
+.sim-modern-greeting p { color: #526078; letter-spacing: -.035em; }
+.sim-modern-greeting h1 { color: #ef7100; letter-spacing: -.035em; }
+.sim-modern-panel {
+  border: 1px solid #e9edf3;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 7px 24px rgba(25, 43, 68, .035);
+  overflow: hidden;
+}
+.sim-modern-panel-header {
+  border-bottom: 1px solid #f0f2f6;
+  padding: 22px 24px;
+}
+.sim-modern-panel-header > .inline-flex > p,
+.sim-modern-panel-header > p {
+  letter-spacing: -.025em;
+}
+.sim-modern-metric {
+  display: flex;
+  position: relative;
+  align-items: center;
+  min-width: 0;
+  min-height: 128px;
+  gap: 14px;
+  padding: 19px 17px;
+  border: 1px solid #e9edf3;
+  border-radius: 17px;
+  background: #fff;
+  color: #202e42;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.sim-modern-metric:hover {
+  transform: translateY(-2px);
+  border-color: #ffd3b4;
+  box-shadow: 0 10px 24px rgba(28, 39, 59, .06);
+}
+.sim-modern-metric:focus-visible { outline: 2px solid #ff7b00; outline-offset: 3px; }
+.sim-modern-metric-icon {
+  display: inline-flex; width: 52px; height: 52px; flex-shrink: 0;
+  align-items: center; justify-content: center; border-radius: 18px;
+  background: #fff0e5; color: #f47700;
+}
+.sim-modern-metric--blue .sim-modern-metric-icon { color: #3679ef; background: #eaf2ff; }
+.sim-modern-metric--green .sim-modern-metric-icon { color: #159653; background: #e8f8ee; }
+.sim-modern-metric--purple .sim-modern-metric-icon { color: #864fe0; background: #f3ebff; }
+.sim-modern-metric-body { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
+.sim-modern-metric-title { font-size: 12px; line-height: 1.5; font-weight: 500; color: #5d6a7f; }
+.sim-modern-metric-value { color: #142137; font-size: 32px; line-height: 1.2; font-weight: 700; letter-spacing: -.045em; }
+.sim-modern-metric-arrow {
+  display: inline-flex; flex-shrink: 0; width: 29px; height: 29px;
+  align-items: center; justify-content: center; border-radius: 50%;
+  background: #fff2e8; color: #ed7000;
+}
+.sim-modern-empty {
+  margin: 0 20px 22px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  min-height: 210px; padding: 32px 20px; border: 1px solid #ebeff4;
+  border-radius: 18px; background: #fff; text-align: center;
+}
+.sim-modern-empty-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 60px; height: 60px; border-radius: 50%;
+  color: #8b98ab; background: #f4f6f8;
+}
+.sim-modern-empty p { color: #6f7b8d; font-size: 13px; }
+.sim-modern-empty strong { font-size: 14px; color: #344054; }
+
+.sim-modern-activity #log-activity-container {
+  border: 1px solid #e9edf3;
+  border-radius: 22px; box-shadow: 0 7px 24px rgba(25, 43, 68, .035);
+  overflow: hidden;
+}
+.sim-modern-activity #log-activity-container > div:first-child {
+  padding: 24px; border-color: #f0f2f6;
+}
+.sim-modern-activity #height-container {
+  height: min(780px, calc(100vh - 270px)) !important;
+  min-height: 430px;
+  padding: 24px;
+}
+.sim-modern-activity .log-activity-card { padding-bottom: 28px; }
+.sim-modern-activity .log-activity-card::before {
+  position: absolute; left: -13px; top: 17px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff7b00; content: '';
+}
+.sim-modern-activity .log-activity-card img { border: 2px solid #fff; }
+.sim-modern-home a { text-underline-offset: 3px; }
+@media (max-width: 1279px) {
+  .sim-modern-search { width: min(240px, 29vw); }
+}
+@media (max-width: 767px) {
+  .sim-modern-topbar { min-height: 65px; }
+  .sim-modern-header-tools { gap: 8px; }
+  .sim-modern-search { width: 145px; }
+  .sim-modern-search-input { font-size: 12px; }
+  .sim-modern-icon-button { width: 36px; height: 36px; }
+  .sim-modern-metric { min-height: 107px; }
+  .sim-modern-activity #height-container { height: 470px !important; min-height: 0; }
+}
+@media (max-width: 480px) {
+  .sim-modern-search { display: none; }
+  .sim-modern-greeting h1 { overflow-wrap: anywhere; }
+  .sim-modern-metric { padding: 15px 13px; gap: 10px; }
+  .sim-modern-metric-icon { width: 44px; height: 44px; border-radius: 14px; }
+  .sim-modern-metric-value { font-size: 27px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sim-modern-shell *, .sim-modern-sidebar * { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
