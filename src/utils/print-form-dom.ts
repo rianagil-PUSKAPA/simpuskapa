@@ -235,7 +235,7 @@ function buildDocument(root: HTMLElement, number: string, title: string): string
     fieldHtml('Partner', pick(root, ['Partner'])),
     fieldHtml('Activity Name', pick(root, ['Activity Name', 'Activity'])),
     fieldHtml('Payment / Request Date', pick(root, ['Payment Date', 'Request Date', 'Advance Payment Date'])),
-    fieldHtml('Requisition Form', pick(root, ['Requisition Form'])),
+    fieldHtml(isRF ? 'Requisition Number' : 'Finance Number', number),
     fieldHtml('Vendor Type', pick(root, ['Vendor Type'])),
     fieldHtml('Vendor Category', pick(root, ['Vendor Category'])),
     fieldHtml('Vendor', pick(root, ['Vendor'])),
