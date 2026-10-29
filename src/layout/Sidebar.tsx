@@ -1,5 +1,6 @@
 import { BankNote01Icon } from '@/components/icon/BankNote01Icon'
 import { CalendarIcon } from '@/components/icon/CalendarIcon'
+import { CheckVerified01Icon } from '@/components/icon/CheckVerified01Icon'
 import { File04Icon } from '@/components/icon/File04Icon'
 import { Database01Icon } from '@/components/icon/Database01Icon'
 import { HomeLineIcon } from '@/components/icon/HomeLineIcon'
@@ -263,7 +264,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'Reporting' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    Reporting
+                    <span className="sim-modern-nav-inner"><File04Icon className="h-4 w-4 stroke-gray-500" /> Reporting</span>
                   </Link>
                   <Link
                     href="/dashboard/finance/payment-request"
@@ -273,7 +274,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     )}
                   >
                     <span className="flex min-w-0 flex-1 items-center">
-                      Payment Request
+                      <span className="sim-modern-nav-inner"><BankNote01Icon className="h-4 w-4 stroke-gray-500" /> Payment Request</span>
                       <SidebarNotificationBadge count={paymentRequestNotificationCount} />
                     </span>
                   </Link>
@@ -288,7 +289,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                         activeSidebar === 'Employee’s Tax' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                       )}
                     >
-                      Employee’s Tax
+                      <span className="sim-modern-nav-inner"><File04Icon className="h-4 w-4 stroke-gray-500" /> Employee’s Tax</span>
                     </Link>
                   ) : null}
                 </div>
@@ -422,7 +423,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'Internal Needs' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    Internal Needs
+                    <span className="sim-modern-nav-inner"><LayersThree02Icon className="h-4 w-4 stroke-gray-500" /> Internal Needs</span>
                   </div>
                 ) : null}
                 <Link
@@ -448,7 +449,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'Employee Contract' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    Employee Contract
+                    <span className="sim-modern-nav-inner"><File04Icon className="h-4 w-4 stroke-gray-500" /> Employee Contract</span>
                   </Link>
                 ) : null}
                 {checkIsItemExist(userLoggedinInformation?.role, [
@@ -464,7 +465,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'Perf. Evaluation' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    Perf. Evaluation
+                    <span className="sim-modern-nav-inner"><CheckVerified01Icon className="h-4 w-4 stroke-gray-500" /> Perf. Evaluation</span>
                   </Link>
                 ) : null}
                 <Link
@@ -487,7 +488,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'Time Off Request' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    Time Off Request
+                    <span className="sim-modern-nav-inner"><CalendarIcon className="h-4 w-4 stroke-gray-500" /> Time Off Request</span>
                   </Link>
                 ) : null}
               </div>
@@ -576,7 +577,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       activeSidebar === 'User Management' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
-                    User Management
+                    <span className="sim-modern-nav-inner"><ImageUserRightIcon className="h-4 w-4 stroke-gray-500" /> User Management</span>
                   </Link>
                 </div>
               </li>
