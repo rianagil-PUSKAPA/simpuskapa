@@ -107,38 +107,82 @@ function workflowHtml(root: HTMLElement): string {
   ).join('') + '</div>'
 }
 
-function collectTables(root: HTMLElement): Array<{ headings: string[]; rows: string[][] }> {
-  const tables = Array.from(root.querySelectorAll('table'))
-  const collected: Array<{ headings: string[]; rows: string[][] }> = []
-  for (const table of tables) {
+type PrintBudgetTable = { headings: string[]; rows: string[][]; label?: string }
+
+function visibleElement(element: Element): boolean {
+  const node = element as HTMLElement
+  return node.getClientRects().length > 0 && window.getComputedStyle(node).visibility !== 'hidden'
+}
+
+function printableCell(element: Element): string {
+  if (element.querySelector('input[type="checkbox"]')) return ''
+  return textOf(element)
+}
+
+function compactTable(headings: string[], rows: string[][], label?: string): PrintBudgetTable | null {
+  const columns = [
+    /^(no|code|budget code|item number)$/i,
+    /description|budget item/i,
+    /^vendor category$/i,
+    /^(qty|quantity)$/i,
+    /^unit$/i,
+    /^(total payment request|total payment|total request|total amount|total cost|total)$/i,
+  ]
+  let selected = columns.map((pattern) => headings.findIndex((header) => pattern.test(norm(header))))
+    .filter((index) => index >= 0)
+  if (!selected.some((i) => /^(total payment request|total payment|total request|total amount|total cost|total)$/i.test(headings[i]))) {
+    const unitCost = headings.findIndex((h) => /^(unit cost|amount)$/i.test(norm(h)))
+    if (unitCost >= 0) selected.push(unitCost)
+  }
+  selected = selected.filter((value, index) => selected.indexOf(value) === index)
+  if (selected.length < 2) {
+    selected = headings.map((header, i) => header.trim() ? i : -1).filter((i) => i >= 0).slice(0, 6)
+  }
+  if (selected.length < 2) return null
+  const outputRows = rows.map((cells) => selected.map((index) => cells[index] || '—'))
+    .filter((row) => row.some((cell) => cell !== '—' && !!cell.trim()))
+  if (!outputRows.length) return null
+  return {
+    headings: selected.map((index) => headings[index] || 'Item'),
+    rows: outputRows,
+    label,
+  }
+}
+
+/* SIM PUSKAPA's RF/PR/APR details use div.table-selection instead of HTML tables.
+   Read each rendered column from direct row children; never scroll/copy the dashboard. */
+function collectTables(root: HTMLElement): PrintBudgetTable[] {
+  const collected: PrintBudgetTable[] = []
+  const selections = Array.from(root.querySelectorAll('.table-container .table-selection'))
+  for (const selection of selections) {
+    if (!visibleElement(selection) || selection.children.length < 2) continue
+    const headingRow = selection.children[0]?.firstElementChild
+    const rowContainer = selection.children[1]
+    if (!headingRow || !rowContainer) continue
+
+    const headings = Array.from(headingRow.children).map(printableCell)
+    if (!headings.some((text) => /description|vendor category|qty|total/i.test(text))) continue
+    const data = Array.from(rowContainer.children)
+      .filter((element) => element.matches('div') && visibleElement(element))
+      .map((row) => Array.from(row.children).map(printableCell))
+    const sectionHeader = selection.closest('.table-container')?.previousElementSibling
+    const sectionCode = textOf(sectionHeader?.querySelector('span') || null)
+    const sectionName = textOf(sectionHeader?.querySelector('p') || null)
+    const label = [sectionCode, sectionName].filter(Boolean).join(' — ')
+    const group = compactTable(headings, data, label || undefined)
+    if (group) collected.push(group)
+  }
+
+  // Fallback for form types that render native table markup.
+  for (const table of Array.from(root.querySelectorAll('table'))) {
+    if (!visibleElement(table) || table.closest('.table-selection')) continue
+    const headings = Array.from(table.querySelectorAll('thead th')).map(printableCell)
+    if (!headings.some((text) => /description|vendor category|qty|total/i.test(text))) continue
     const rows = Array.from(table.querySelectorAll('tbody tr'))
-    if (!rows.length) continue
-    const headings = Array.from(table.querySelectorAll('thead th')).map(textOf)
-    const data = rows.map((tr) =>
-      Array.from(tr.querySelectorAll('td')).map(textOf)
-    ).filter((cells) => cells.some(Boolean))
-    if (!headings.length || !data.length) continue
-    if (!headings.some((h) => /description|vendor category|qty|unit|amount|payment|total/i.test(h))) continue
-    const definitions = [
-      /^(no|code|budget code|item number)$/i,
-      /description|budget item/i,
-      /vendor category/i,
-      /^qty|quantity/i,
-      /^unit$/i,
-      /^(total payment|total request|total amount|total cost|total)$/i,
-    ]
-    let chosen = definitions.map((pattern) =>
-      headings.findIndex((header) => pattern.test(norm(header)))
-    ).filter((i) => i >= 0)
-    chosen = chosen.filter((i, index) => chosen.indexOf(i) === index)
-    if (chosen.length < 2) chosen = headings.map((_, i) => i).slice(0, 6)
-    const outputHeaders = chosen.map((i) => headings[i] || 'Item')
-    const outputRows = data.map((cells) => chosen.map((i) => {
-      let value = cells[i] || '—'
-      if (/^rp$/i.test(norm(value)) && cells[i + 1]) value += ' ' + cells[i + 1]
-      return value
-    }))
-    collected.push({ headings: outputHeaders, rows: outputRows })
+      .filter(visibleElement)
+      .map((row) => Array.from(row.querySelectorAll('td')).map(printableCell))
+    const group = compactTable(headings, rows)
+    if (group) collected.push(group)
   }
   return collected
 }
@@ -147,7 +191,7 @@ function tableHtml(root: HTMLElement): string {
   const tables = collectTables(root)
   if (!tables.length) return '<p class="empty">No budget item table is visible on this form.</p>'
   return tables.map((table, n) =>
-    '<div class="table-group">' + (tables.length > 1 ? '<div class="table-label">Budget group ' + (n + 1) + '</div>' : '') +
+    '<div class="table-group">' + (table.label || tables.length > 1 ? '<div class="table-label">' + safe(table.label || 'Budget group ' + (n + 1)) + '</div>' : '') +
     '<table><thead><tr>' + table.headings.map((h) => '<th>' + safe(h) + '</th>').join('') +
     '</tr></thead><tbody>' + table.rows.map((row) =>
       '<tr>' + row.map((v) => '<td>' + safe(v) + '</td>').join('') + '</tr>'
@@ -200,14 +244,15 @@ function buildDocument(root: HTMLElement, number: string, title: string): string
   const total = findValue(root, ['Total Payment Requested', 'Total Request', 'Total Amount'])
   const tax = findValue(root, ['Pajak', 'Tax'])
   const amounts = (isRF
-    ? [['Total Request', total || transfer || '—']]
+    ? [{ label: 'Total Request', value: total || transfer || '—', main: true }]
     : [
-        ['Transfer Amount', transfer || '—'],
-        ['Total Amount', total || '—'],
-        ['Tax', tax || '—'],
-      ]).map(([label, value]) =>
-    '<div class="amount"><div class="label">' + safe(label) +
-    '</div><div class="big-value">' + safe(value) + '</div></div>'
+        { label: 'Transfer Amount', value: transfer || '—', main: true },
+        { label: 'Total', value: total || '—', main: false },
+        { label: 'Tax', value: tax || '—', main: false },
+      ]).map((item) =>
+    '<div class="amount"><div class="label">' + safe(item.label) +
+    '</div><div class="' + (item.main ? 'big-value' : 'small-value') + '">' +
+    safe(item.value) + '</div></div>'
   ).join('')
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width">
@@ -240,8 +285,9 @@ text-transform:uppercase; margin:0 0 9px }
 border-radius:8px; overflow:hidden; background:#fff }
 .amount{ padding:12px 12px }
 .amount + .amount{ border-left:1px solid #e3e9f0 }
-.big-value{ font-size:15px; font-weight:800; color:#162b47; white-space:normal }
-.approval{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px }
+.big-value{ font-size:17px; font-weight:800; color:#162b47; white-space:normal }
+.small-value{ font-size:11.5px; font-weight:700; color:#3f5069; white-space:normal }
+.approval{ display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:8px }
 .approver{ background:#f8fafc; padding:9px; border:1px solid #e9eef4;
 border-radius:8px; min-width:0; overflow-wrap:anywhere }
 .approver .value{ font-size:9.4px; margin:4px 0 }
@@ -257,14 +303,14 @@ td{ color:#34445b }
 thead{ display:table-header-group }
 tr{ break-inside:avoid }
 .bottom{ display:grid; grid-template-columns:minmax(0,1fr) 130px;
-gap:16px; margin-top:14px; align-items:start; break-inside:avoid-page }
+gap:16px; margin-top:14px; align-items:end; break-inside:avoid-page }
 .bottom .section{ margin-top:0 }
 .docs{ border:1px solid #e7ebf2; border-radius:7px; padding:2px 11px }
 .doc{ display:flex; align-items:center; justify-content:space-between; gap:12px;
 padding:6px 0; border-bottom:1px solid #edf0f4 }
 .doc:last-child{ border-bottom:none }
 .doc b{ color:#d36c0a }
-.initial{ border:1px solid #d6dde8; border-radius:7px; overflow:hidden }
+.initial{ border:1px solid #d6dde8; border-radius:7px; overflow:hidden; align-self:end }
 .initial-header{ background:#fff5e9; color:#c4660b; font-size:10px; font-weight:800;
 border-bottom:1px solid #d6dde8; padding:7px 9px }
 .initial-body{ height:60px; padding:6px; color:#78879a; font-size:8px }
@@ -288,7 +334,7 @@ box-shadow:0 7px 34px #d6dae0 } }
 <div class="bottom"><section class="section"><h2>Supporting Documents</h2>${documentHtml(root)}</section>
 <div class="initial"><div class="initial-header">Initial / Reviewed by</div>
 <div class="initial-body">Name / initials: __________________</div></div></div>
-<div class="footer"><span>PUSKAPA · Printed form summary</span><span>${code}</span></div>
+<div class="footer"><span>Print Doc</span><span>${code}</span></div>
 </body></html>`
 }
 
