@@ -5,6 +5,8 @@ import { Breadcrumb } from '@/components/Breadcrumb'
 import { Button } from '@/components/Button'
 import { Modal } from '@/components/Modal'
 import { AlarmClockOffIcon } from '@/components/icon/AlarmClockOffIcon'
+import { Bell01Icon } from '@/components/icon/Bell01Icon'
+import { SearchIcon } from '@/components/icon/SearchIcon'
 import { CheckVerified01Icon } from '@/components/icon/CheckVerified01Icon'
 import { HelpCircleIcon } from '@/components/icon/HelpCircleIcon'
 import { LockKeyholeCircleIcon } from '@/components/icon/LockKeyholeCircleIcon'
@@ -39,6 +41,24 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
   const { isCollapsed, isFixedExpand, handleSidebarToggle, userLoggedinInformation } = useDashboardContext()
 
   const router = useRouter()
+  const [pageSearch, setPageSearch] = useState('')
+  const quickPages = [
+    { label: 'Home', href: '/dashboard' },
+    { label: 'Project List', href: '/dashboard/project' },
+    { label: 'Requisition Form', href: '/dashboard/procurement' },
+    { label: 'Vendor Adm', href: '/dashboard/external/vendor-adm' },
+    { label: 'Employee List', href: '/dashboard/internal/employee' },
+    { label: 'Time Off', href: '/dashboard/internal/timeoff/all?tab=calendar-view' },
+  ]
+  const filteredPages = pageSearch.trim()
+    ? quickPages.filter((page) => page.label.toLowerCase().includes(pageSearch.trim().toLowerCase()))
+    : []
+  const pendingApprovalCount =
+    Number(personalizedNotifications?.need_approval_timeoff_total || 0) +
+    Number(personalizedNotifications?.need_approval_program_budget_total || 0) +
+    Number(personalizedNotifications?.need_approval_rf_total || 0) +
+    Number(personalizedNotifications?.need_approval_pr_total || 0)
+
   const [isOpenModal, setIsOpenModal] = useState<ModalStatement | null>({
     logout: false,
   })
@@ -134,11 +154,52 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
 
   return (
     <>
-      <section className={cn('main-dashboard', isFixedExpand ? 'ml-24' : isCollapsed ? 'ml-24' : 'ml-60 xl:ml-64')}>
-        <div className="flex items-center justify-between border-b border-b-gray-200 px-7 py-4 xl:px-10">
+      <section className={cn('main-dashboard sim-modern-shell', isFixedExpand ? 'ml-24' : isCollapsed ? 'ml-24' : 'ml-60 xl:ml-64')}>
+        <div className="sim-modern-topbar flex items-center justify-between gap-3 px-5 py-4 md:px-7 xl:px-10">
           <Breadcrumb type="arrow" activeState="badge" breadcrumbLists={breadcrumbLists} />
-          <div className="inline-flex items-center gap-1">
-            <Menu as="div" className="relative ml-3 inline-block text-left">
+          <div className="sim-modern-header-tools">
+            <div className="sim-modern-search">
+              <SearchIcon className="sim-modern-search-icon h-5 w-5" />
+              <input
+                type="search"
+                aria-label="Search pages"
+                autoComplete="off"
+                className="sim-modern-search-input"
+                placeholder="Search pages..."
+                value={pageSearch}
+                onChange={(event) => setPageSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setPageSearch('')
+                  if (event.key === 'Enter' && filteredPages[0]) {
+                    router.push(filteredPages[0].href)
+                    setPageSearch('')
+                  }
+                }}
+              />
+              {pageSearch.trim() && (
+                <div className="sim-modern-search-results" aria-label="Matching pages">
+                  {filteredPages.length ? (
+                    filteredPages.map((page) => (
+                      <Link key={page.href} href={page.href} onClick={() => setPageSearch('')}>
+                        {page.label}
+                      </Link>
+                    ))
+                  ) : (
+                    <p>No matching pages</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <Link
+              href="/dashboard/user/need-approval"
+              aria-label={pendingApprovalCount ? String(pendingApprovalCount) + ' pending approvals' : 'View approvals'}
+              title="View pending approvals"
+              className="sim-modern-icon-button"
+            >
+              <Bell01Icon className="h-5 w-5" />
+              {pendingApprovalCount > 0 && <span className="sim-modern-notification-dot" />}
+            </Link>
+            <Menu as="div" className="relative ml-1 inline-block text-left">
               {({ open }) => (
                 <>
                   <Menu.Button
@@ -158,7 +219,7 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
                     leaveFrom="transform opacity-100 scale-100"
                     leaveTo="transform opacity-0 scale-95"
                   >
-                    <Menu.Items className="absolute right-0 z-20 mt-2 w-[15rem] origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none xl:w-[18rem]">
+                    <Menu.Items className="absolute right-0 z-30 mt-3 w-[15rem] origin-top-right divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl focus:outline-none xl:w-[18rem]">
                       <div className="px-4 py-3">
                         <AvatarLabelGroup
                           size="md"
