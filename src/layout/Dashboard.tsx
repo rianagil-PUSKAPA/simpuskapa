@@ -1,35 +1,20 @@
 /* eslint-disable tailwindcss/no-custom-classname */
-import { AvatarLabelGroup } from '@/components/AvatarLabelGroup'
 import { AvatarPlacement } from '@/components/AvatarPlacement'
 import { Breadcrumb } from '@/components/Breadcrumb'
-import { Button } from '@/components/Button'
-import { Modal } from '@/components/Modal'
-import { AlarmClockOffIcon } from '@/components/icon/AlarmClockOffIcon'
 import { Bell01Icon } from '@/components/icon/Bell01Icon'
 import { SearchIcon } from '@/components/icon/SearchIcon'
-import { CheckVerified01Icon } from '@/components/icon/CheckVerified01Icon'
-import { HelpCircleIcon } from '@/components/icon/HelpCircleIcon'
-import { LockKeyholeCircleIcon } from '@/components/icon/LockKeyholeCircleIcon'
-import { LogOut01Icon } from '@/components/icon/LogOut01Icon'
-import { User01Icon } from '@/components/icon/User01Icon'
 import { cn } from '@/lib/utils'
 import { useDashboardContext } from '@/providers/DashboardProvider'
-import { theme } from '@/types/themes'
 import { getPersonalizedNotification } from '@/utils/apiRequestHelper'
-import { Menu, Transition } from '@headlessui/react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWRMutation from 'swr/mutation'
-import { getCookie, removeCookie, setCookie } from 'typescript-cookie'
+import { getCookie, setCookie } from 'typescript-cookie'
 
 type DashboardProps = {
   children?: React.ReactNode
   breadcrumbLists: BreadcrumbList[]
-}
-
-type ModalStatement = {
-  logout: boolean
 }
 
 type BreadcrumbList = {
@@ -54,10 +39,6 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
     ? quickPages.filter((page) => page.label.toLowerCase().includes(pageSearch.trim().toLowerCase()))
     : []
 
-  const [isOpenModal, setIsOpenModal] = useState<ModalStatement | null>({
-    logout: false,
-  })
-
   const {
     data: personalizedNotifications,
     error: personalizedNotificationsError,
@@ -69,19 +50,6 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
     Number(personalizedNotifications?.need_approval_program_budget_total || 0) +
     Number(personalizedNotifications?.need_approval_rf_total || 0) +
     Number(personalizedNotifications?.need_approval_pr_total || 0)
-
-  const closeLogOutModal = () => {
-    setIsOpenModal((prev: ModalStatement) => ({ ...prev, logout: false }))
-  }
-
-  const openLogOutModal = () => {
-    setIsOpenModal((prev: ModalStatement) => ({ ...prev, logout: true }))
-  }
-
-  const handleLogout = () => {
-    removeCookie('auth_token')
-    router.replace('/login')
-  }
 
   useEffect(() => {
     const parentMenu = router.asPath.split('/')[2]
@@ -200,377 +168,18 @@ export const Dashboard = ({ children, breadcrumbLists }: DashboardProps) => {
               <Bell01Icon className="h-5 w-5 stroke-gray-600" />
               {pendingApprovalCount > 0 && <span className="sim-modern-notification-dot" />}
             </Link>
-            <Menu as="div" className="relative ml-1 inline-block text-left">
-              {({ open }) => (
-                <>
-                  <Menu.Button
-                    className={cn(
-                      'relative flex before:absolute before:-left-1 before:-top-1 before:-z-10 before:h-12 before:w-12 before:rounded-full before:bg-primary-100 before:transition before:duration-300 before:ease-out before:content-[""]',
-                      open ? 'before:opacity-100' : 'before:opacity-0',
-                    )}
-                  >
-                    <AvatarPlacement size="md" image={userLoggedinInformation?.avatar} text={''} />
-                  </Menu.Button>
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-out duration-100"
-                    enterFrom="transform opacity-0 scale-95"
-                    enterTo="transform opacity-100 scale-100"
-                    leave="transition ease-in duration-75"
-                    leaveFrom="transform opacity-100 scale-100"
-                    leaveTo="transform opacity-0 scale-95"
-                  >
-                    <Menu.Items className="absolute right-0 z-30 mt-3 w-[15rem] origin-top-right divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl focus:outline-none xl:w-[18rem]">
-                      <div className="px-4 py-3">
-                        <AvatarLabelGroup
-                          size="md"
-                          image={userLoggedinInformation?.avatar}
-                          text={userLoggedinInformation?.employee_name}
-                          supportingText={userLoggedinInformation?.email}
-                          statusIcon="online"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href={`/dashboard/internal/employee/${userLoggedinInformation?.employee_id}`}
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300`,
-                              )}
-                            >
-                              <User01Icon className="h-4 w-4 stroke-gray-700" />
-                              My Profile
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/change-password"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                'group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300',
-                              )}
-                            >
-                              <LockKeyholeCircleIcon className="h-4 w-4" />
-                              Change Password
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href={`/dashboard/internal/employee/${userLoggedinInformation?.employee_id}?tab=timeoff`}
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300`,
-                              )}
-                            >
-                              <AlarmClockOffIcon className="h-4 w-4 stroke-gray-700" />
-                              My Time Off
-                            </Link>
-                          )}
-                        </Menu.Item>
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-approval"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <CheckVerified01Icon className="h-4 w-4 stroke-gray-700" />
-                              Need Approval:
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        {/* {checkIsItemExist(userLoggedinInformation?.role, [
-                          RoleDefinition.SUPERVISOR,
-                          RoleDefinition.SUPERADMIN,
-                        ]) ? (
-                        ) : null} */}
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-approval?tab=timeoff-request"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Time Off Req
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_approval_timeoff_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-approval?tab=program-budget"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Project Budget
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_approval_program_budget_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-approval?tab=procurement-request"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Procurement Request
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_approval_rf_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-approval?tab=payment-request"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Payment Request
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_approval_pr_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-action"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <CheckVerified01Icon className="h-4 w-4 stroke-gray-700" />
-                              Need Action:
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-action?tab=requisition-form"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Requisition Form
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_action_rf_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-action?tab=payment-request-check"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Payment Request (Check)
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_action_pr_check_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/need-action?tab=payment-request-pay"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Payment Request (Pay)
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.need_action_pr_pay_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/request-tracking"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <CheckVerified01Icon className="h-4 w-4 stroke-gray-700" />
-                              Request Tracking:
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/request-tracking?tab=requisition-form"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Requisition Form
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.tracking_rf_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/dashboard/user/request-tracking?tab=payment-request"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-500',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold duration-300`,
-                              )}
-                            >
-                              <div className="h-4 w-4"></div>
-                              Payment Request
-                              <div className="rounded-2xl bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mix-blend-multiply">
-                                {personalizedNotifications?.tracking_pr_total || 0}
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              type="button"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300`,
-                              )}
-                            >
-                              <HelpCircleIcon className="h-4 w-4 stroke-gray-700" />
-                              Support
-                            </button>
-                          )}
-                        </Menu.Item>
-                        {/* <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              type="button"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300`,
-                              )}
-                            >
-                              <Settings01Icon className="h-4 w-4 stroke-gray-700" />
-                              Setting
-                            </button>
-                          )}
-                        </Menu.Item> */}
-                      </div>
-                      <div className="flex flex-col gap-0.5 px-1.5 py-1">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              onClick={openLogOutModal}
-                              type="button"
-                              className={cn(
-                                active ? 'bg-gray-50' : 'text-gray-700',
-                                `group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium duration-300`,
-                              )}
-                            >
-                              <LogOut01Icon className="h-4 w-4 stroke-gray-700" />
-                              Log out
-                            </button>
-                          )}
-                        </Menu.Item>
-                      </div>
-                    </Menu.Items>
-                  </Transition>
-                </>
-              )}
-            </Menu>
+            <Link
+              href="/dashboard/user/profile-info"
+              className="sim-modern-profile-entry"
+              title="Open Profile Info"
+              aria-label="Open Profile Info"
+            >
+              <AvatarPlacement size="md" image={userLoggedinInformation?.avatar} text="" />
+            </Link>
           </div>
         </div>
         {children}
       </section>
-      {/* Modal Logout Confirmation */}
-      <Modal
-        icon={<LogOut01Icon className="h-6 w-6 stroke-primary-500" />}
-        theme={theme.PRIMARY}
-        modalTitle="Logout from your account?"
-        modalDescription="Are you sure you want to logout? You should re-login when want access SIMPUSKAPA dashboard."
-        modalButtons={[
-          <>
-            <Button
-              type="button"
-              btnType="normal"
-              variant="secondary-gray"
-              className="w-full justify-center"
-              size="lg"
-              onClick={closeLogOutModal}
-            >
-              Cancel
-            </Button>
-          </>,
-          <>
-            <Button
-              type="button"
-              btnType="normal"
-              variant="primary"
-              className="w-full justify-center"
-              size="lg"
-              onClick={handleLogout}
-            >
-              Yes, Sure
-            </Button>
-          </>,
-        ]}
-        stateModal={isOpenModal.logout}
-        handleCloseModal={closeLogOutModal}
-      />
     </>
   )
 }
