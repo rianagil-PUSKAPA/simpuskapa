@@ -347,6 +347,10 @@ export function printCurrentForm() {
     window.alert('Cannot print: the form number was not found. Please open the form detail page.')
     return
   }
+  if (root.querySelector('.table-container') && collectTables(root).length === 0) {
+    window.alert('Budget item rows are not ready to print. Please refresh the form and try again.')
+    return
+  }
   const title = formTitle(root)
   const popup = window.open('', '_blank')
   if (!popup) {
