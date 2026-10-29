@@ -110,9 +110,9 @@ export const ProgramInformation = ({ slugIdentifier }: Props) => {
     <>
       <div
         ref={scrollsypControllerRef}
-        className="flex flex-col items-start gap-6 sm:gap-8 md:flex-row lg:gap-12 2xl:gap-16"
+        className="sim-pd-information-layout flex flex-col items-start gap-6 sm:gap-8 md:flex-row lg:gap-12 2xl:gap-16"
       >
-        <div className="top-0 block w-full shrink-0 md:sticky md:w-52">
+        <div className="sim-pd-info-navigation top-0 block w-full shrink-0 md:sticky md:w-52">
           <ul className="vertical-tabs md:mt-5">
             <li className="vertical-tabs-item" data-tabs-id="about-partner">
               <a href="#about-partner">About Partner</a>
@@ -131,7 +131,8 @@ export const ProgramInformation = ({ slugIdentifier }: Props) => {
             </li>
           </ul>
         </div>
-        <div className="mb-28 flex flex-col">
+        <div className="sim-pd-information-cards mb-28 flex flex-col">
+          <div className="sim-pd-info-column">
           <div className="column-items" id="about-partner">
             <div className="flex items-center justify-between border-b border-b-gray-200 px-0 py-5 xxs:px-5 xs:px-6">
               <h6 className="text-base font-semibold text-gray-900 xxs:text-lg">About Partner</h6>
@@ -196,6 +197,8 @@ export const ProgramInformation = ({ slugIdentifier }: Props) => {
               </tbody>
             </table>
           </div>
+          </div>
+          <div className="sim-pd-info-column">
           <div className="column-items" id="people">
             <div className="flex items-center justify-between border-b border-b-gray-200 px-0 py-5 xxs:px-5 xs:px-6">
               <h6 className="text-base font-semibold text-gray-900 xxs:text-lg">People</h6>
@@ -367,6 +370,7 @@ export const ProgramInformation = ({ slugIdentifier }: Props) => {
                 </tr>
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       </div>
