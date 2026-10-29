@@ -56,7 +56,7 @@ const DashboardMetricCard = ({ href, label, value, icon, tone }: DashboardMetric
     <span className="sim-modern-metric-icon" aria-hidden="true">{icon}</span>
     <span className="sim-modern-metric-body">
       <span className="sim-modern-metric-title">{label}</span>
-      <strong className="sim-modern-metric-value">{value ?? 0}</strong>
+      <strong className="sim-modern-metric-value">{value === null || value === undefined ? '—' : value}</strong>
     </span>
     <span className="sim-modern-metric-arrow" aria-hidden="true">
       <ArrowRightIcon className="h-4 w-4 stroke-primary-700" />
@@ -77,7 +77,12 @@ const DashboardIndex = ({ log }: Props) => {
     dayjs(filtrationDate[1]).format('YYYY-MM-DD'),
   ]
 
-  const { data: personalizedNotifications, trigger: personalizedNotificationsTrigger } = useSWRMutation(
+  const {
+    data: personalizedNotifications,
+    trigger: personalizedNotificationsTrigger,
+    error: personalizedNotificationsError,
+    isMutating: notificationsLoading,
+  } = useSWRMutation(
     'personalizedNotifications',
     getPersonalizedNotification,
   )
@@ -151,6 +156,10 @@ const DashboardIndex = ({ log }: Props) => {
       : false
   }
 
+  // Do not show a false zero while the per-user notification response is unknown.
+  const notificationReady = personalizedNotifications !== undefined && personalizedNotifications !== null
+  const notificationsUnavailable = !notificationReady && !notificationsLoading && !!personalizedNotificationsError
+
   const needActionTotal =
     Number(personalizedNotifications?.need_action_rf_total || 0) +
     Number(personalizedNotifications?.need_action_pr_check_total || 0) +
@@ -181,11 +190,12 @@ const DashboardIndex = ({ log }: Props) => {
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Needs Approval</p>
                     <Badge size="sm" color="primary" icon="none">
-                      {personalizedNotifications?.need_approval_timeoff_total +
-                        personalizedNotifications?.need_approval_program_budget_total +
-                        personalizedNotifications?.need_approval_rf_total +
-                        personalizedNotifications?.need_approval_pr_total || 0}{' '}
-                      items
+                      {notificationReady
+                        ? (Number(personalizedNotifications?.need_approval_timeoff_total || 0) +
+                           Number(personalizedNotifications?.need_approval_program_budget_total || 0) +
+                           Number(personalizedNotifications?.need_approval_rf_total || 0) +
+                           Number(personalizedNotifications?.need_approval_pr_total || 0)) + ' items'
+                        : notificationsUnavailable ? 'Unavailable' : 'Loading...'}
                     </Badge>
                   </div>
                   <Link href="/dashboard/user/need-approval">
@@ -194,32 +204,44 @@ const DashboardIndex = ({ log }: Props) => {
                     </Button>
                   </Link>
                 </div>
+                {!notificationReady && (
+                  <div className="mx-5 mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status">
+                    {notificationsUnavailable
+                      ? 'Approval counts could not be loaded. Please retry; your request records have not been changed.'
+                      : 'Loading approval counts for your account...'}
+                    {notificationsUnavailable && (
+                      <button type="button" onClick={() => personalizedNotificationsTrigger()} className="ml-3 font-semibold text-primary-700 underline">
+                        Retry
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=timeoff-request"
                       label="Time Off Request"
-                      value={personalizedNotifications?.need_approval_timeoff_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_timeoff_total || 0) : undefined}
                       icon={<CalendarIcon className="h-5 w-5 stroke-primary-600" />}
                       tone="orange"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=program-budget"
                       label="Project Budget"
-                      value={personalizedNotifications?.need_approval_program_budget_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_program_budget_total || 0) : undefined}
                       icon={<LayersThree02Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="blue"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=procurement-request"
                       label="Requisition Form"
-                      value={personalizedNotifications?.need_approval_rf_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_rf_total || 0) : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-approval?tab=payment-request"
                       label="Payment Request"
-                      value={personalizedNotifications?.need_approval_pr_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_approval_pr_total || 0) : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="purple"
                     />
@@ -232,10 +254,7 @@ const DashboardIndex = ({ log }: Props) => {
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Need Action</p>
                     <Badge size="sm" color="primary" icon="none">
-                      {personalizedNotifications?.need_action_rf_total +
-                        personalizedNotifications?.need_action_pr_check_total +
-                        personalizedNotifications?.need_action_pr_pay_total || 0}{' '}
-                      items
+                      {notificationReady ? needActionTotal + ' items' : notificationsUnavailable ? 'Unavailable' : 'Loading...'}
                     </Badge>
                   </div>
                   <Link href="/dashboard/user/need-action?tab=requisition-form">
@@ -244,7 +263,7 @@ const DashboardIndex = ({ log }: Props) => {
                     </Button>
                   </Link>
                 </div>
-                {personalizedNotifications && needActionTotal === 0 ? (
+                {notificationReady && needActionTotal === 0 ? (
                   <div className="sim-modern-empty">
                     <span className="sim-modern-empty-icon"><CheckVerified01Icon className="h-7 w-7 stroke-gray-400" /></span>
                     <strong>No items need action right now</strong>
@@ -255,21 +274,21 @@ const DashboardIndex = ({ log }: Props) => {
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=requisition-form"
                       label="Requisition Form"
-                      value={personalizedNotifications?.need_action_rf_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_rf_total || 0) : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=payment-request-check"
                       label="Payment Request (Check)"
-                      value={personalizedNotifications?.need_action_pr_check_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_check_total || 0) : undefined}
                       icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="orange"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/need-action?tab=payment-request-pay"
                       label="Payment Request (Pay)"
-                      value={personalizedNotifications?.need_action_pr_pay_total}
+                      value={notificationReady ? Number(personalizedNotifications?.need_action_pr_pay_total || 0) : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="purple"
                     />
@@ -283,8 +302,10 @@ const DashboardIndex = ({ log }: Props) => {
                   <div className="inline-flex items-center gap-2">
                     <p className="text-lg font-semibold text-gray-900">Request Tracking</p>
                     <Badge size="sm" color="primary" icon="none">
-                      {personalizedNotifications?.tracking_rf_total + personalizedNotifications?.tracking_pr_total || 0}{' '}
-                      items
+                      {notificationReady
+                        ? (Number(personalizedNotifications?.tracking_rf_total || 0) +
+                           Number(personalizedNotifications?.tracking_pr_total || 0)) + ' items'
+                        : notificationsUnavailable ? 'Unavailable' : 'Loading...'}
                     </Badge>
                   </div>
                   <Link href="/dashboard/user/request-tracking">
@@ -297,14 +318,14 @@ const DashboardIndex = ({ log }: Props) => {
                     <DashboardMetricCard
                       href="/dashboard/user/request-tracking?tab=requisition-form"
                       label="Requisition Form"
-                      value={personalizedNotifications?.tracking_rf_total}
+                      value={notificationReady ? Number(personalizedNotifications?.tracking_rf_total || 0) : undefined}
                       icon={<File04Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="green"
                     />
                     <DashboardMetricCard
                       href="/dashboard/user/request-tracking?tab=payment-request"
                       label="Payment Request"
-                      value={personalizedNotifications?.tracking_pr_total}
+                      value={notificationReady ? Number(personalizedNotifications?.tracking_pr_total || 0) : undefined}
                       icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />}
                       tone="blue"
                     />
