@@ -1202,7 +1202,7 @@ export const PaymentRequestDetail = ({
           },
         ]}
       >
-        <>
+        <div className={prDetail.number.split('/')[0].toUpperCase() === 'PR' ? 'sim-modern-forms sim-modern-forms-pr' : ''}>
           <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-gray-900">{titleGlobal}</h1>
@@ -2056,7 +2056,7 @@ export const PaymentRequestDetail = ({
               </div>
             </div>
           </div>
-        </>
+        </div>
       </Dashboard>
 
       {/* Form Finance Process Attachment */}
