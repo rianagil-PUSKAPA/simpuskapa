@@ -1,4 +1,6 @@
 import { BankNote01Icon } from '@/components/icon/BankNote01Icon'
+import { CalendarIcon } from '@/components/icon/CalendarIcon'
+import { File04Icon } from '@/components/icon/File04Icon'
 import { Database01Icon } from '@/components/icon/Database01Icon'
 import { HomeLineIcon } from '@/components/icon/HomeLineIcon'
 import { ImageUserCheckIcon } from '@/components/icon/ImageUserCheckIcon'
@@ -187,7 +189,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     activeSidebar === 'Home' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
-                  Home
+                  <span className="sim-modern-nav-inner"><HomeLineIcon className="h-4 w-4 stroke-gray-500" /> Home</span>
                 </Link>
               </div>
             </li>
@@ -223,7 +225,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     activeSidebar === 'Project List' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
-                  Project List
+                  <span className="sim-modern-nav-inner"><LayersThree02Icon className="h-4 w-4 stroke-gray-500" /> Project List</span>
                 </div>
               </div>
             </li>
@@ -320,7 +322,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   )}
                 >
                   <span className="flex min-w-0 flex-1 items-center">
-                    Requisition Form
+                    <span className="sim-modern-nav-inner"><File04Icon className="h-4 w-4 stroke-gray-500" /> Requisition Form</span>
                     <SidebarNotificationBadge count={requisitionNotificationCount} />
                   </span>
                 </Link>
@@ -365,7 +367,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     activeSidebar === 'Vendor Adm' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
-                  Vendor Adm
+                  <span className="sim-modern-nav-inner"><ImageUserRightIcon className="h-4 w-4 stroke-gray-500" /> Vendor Adm</span>
                 </Link>
                 {/* <Link
                   href="/"
@@ -431,7 +433,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     activeSidebar === 'Employee List' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
-                  Employee List
+                  <span className="sim-modern-nav-inner"><ImageUserCheckIcon className="h-4 w-4 stroke-gray-500" /> Employee List</span>
                 </Link>
                 {checkIsItemExist(userLoggedinInformation?.role, [
                   RoleDefinition.ADMIN,
@@ -472,7 +474,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     activeSidebar === 'Time Off' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
-                  Time Off
+                  <span className="sim-modern-nav-inner"><CalendarIcon className="h-4 w-4 stroke-gray-500" /> Time Off</span>
                 </Link>
                 {checkIsItemExist(userLoggedinInformation?.role, [
                   RoleDefinition.SUPERVISOR,
