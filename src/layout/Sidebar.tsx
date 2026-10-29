@@ -13,7 +13,7 @@ import { useDashboardContext } from '@/providers/DashboardProvider'
 import { RoleDefinition } from '@/shared/role.access'
 import { checkIsItemExist } from '@/utils/globalHelper'
 import { app_version } from '@/version'
-import { getPersonalizedNotification } from '@/utils/apiRequestHelper'
+import { getPersonalizedNotification, paymentRequestApi } from '@/utils/apiRequestHelper'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -43,6 +43,13 @@ export const Sidebar = ({ activeSidebar }: Props) => {
   const router = useRouter()
 
   const [personalizedNotifications, setPersonalizedNotifications] = useState<any>(null)
+  // Same status filter/data as Finance > Payment Request > Pending tab.
+  const [financePendingCount, setFinancePendingCount] = useState<number | null>(null)
+  const canSeeFinancePending = checkIsItemExist(userLoggedinInformation?.role, [
+    RoleDefinition.FINANCE_TEAM,
+    RoleDefinition.HEAD_OF_FINANCE,
+    RoleDefinition.SUPERADMIN,
+  ])
 
   useEffect(() => {
     let mounted = true
@@ -69,9 +76,59 @@ export const Sidebar = ({ activeSidebar }: Props) => {
     }
   }, [])
 
+  useEffect(() => {
+    if (!canSeeFinancePending) {
+      setFinancePendingCount(null)
+      return
+    }
+
+    let mounted = true
+    let requestInProgress = false
+    let lastFetch = 0
+
+    const loadFinancePending = async () => {
+      if (requestInProgress || (typeof document !== 'undefined' && document.hidden)) return
+      requestInProgress = true
+      lastFetch = Date.now()
+
+      try {
+        // Identical query to the 'pending' tab in
+        // src/pages/dashboard/finance/payment-request/index.tsx.
+        const result = await paymentRequestApi.pRControllerGetListPaymentRequest(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'pending',
+        )
+        const pendingPayments = result?.data?.data
+        // Axios interceptor may resolve an error response; never treat that as zero.
+        if (mounted && Array.isArray(pendingPayments)) {
+          setFinancePendingCount(pendingPayments.length)
+        }
+      } catch {
+        // Keep the last confirmed count; do not invent a zero on API failure.
+      } finally {
+        requestInProgress = false
+      }
+    }
+
+    loadFinancePending()
+    const interval = window.setInterval(loadFinancePending, 120000)
+    const handleFocus = () => {
+      if (Date.now() - lastFetch > 30000) loadFinancePending()
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [canSeeFinancePending])
+
   const requisitionNotificationCount = Number(personalizedNotifications?.need_approval_rf_total || 0)
 
-  const paymentRequestNotificationCount = Number(personalizedNotifications?.need_approval_pr_total || 0)
 
   const handleShrinkSidebar = () => {
     handleSidebarToggle(!isCollapsed)
@@ -268,6 +325,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   </Link>
                   <Link
                     href="/dashboard/finance/payment-request"
+                    title={financePendingCount && financePendingCount > 0 ? `${financePendingCount} payment requests pending` : 'Payment Request'}
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
                       activeSidebar === 'Payment Request' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
@@ -275,7 +333,11 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   >
                     <span className="flex min-w-0 flex-1 items-center">
                       <span className="sim-modern-nav-inner"><BankNote01Icon className="h-4 w-4 stroke-gray-500" /> Payment Request</span>
-                      <SidebarNotificationBadge count={paymentRequestNotificationCount} />
+                      {canSeeFinancePending && financePendingCount !== null && financePendingCount > 0 && (
+                        <span className="sim-finance-pending-indicator">
+                          <SidebarNotificationBadge count={financePendingCount} />
+                        </span>
+                      )}
                     </span>
                   </Link>
                   {checkIsItemExist(userLoggedinInformation?.role, [
