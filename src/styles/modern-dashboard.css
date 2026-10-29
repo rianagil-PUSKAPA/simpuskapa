@@ -371,3 +371,294 @@
     padding-inline: 12px;
   }
 }
+
+/* Profile Info — dedicated account center */
+.sim-modern-profile-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 7px 4px 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: border-color .2s, background .2s;
+}
+.sim-modern-profile-entry:hover {
+  background: #fff3e9;
+  border-color: #ffe1cd;
+}
+.sim-modern-profile-entry:focus-visible,
+.sim-profile-page a:focus-visible,
+.sim-profile-page button:focus-visible {
+  outline: 2px solid #ff7b00;
+  outline-offset: 3px;
+}
+.sim-profile-page {
+  width: 100%;
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 30px 38px 60px;
+}
+.sim-profile-intro { margin: 0 0 22px; }
+.sim-profile-intro > span {
+  display: inline-block;
+  margin-bottom: 9px;
+  color: #ed7000;
+  font-size: 11px;
+  letter-spacing: .13em;
+  font-weight: 800;
+}
+.sim-profile-intro h1 {
+  color: #243147;
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.2;
+}
+.sim-profile-intro p {
+  margin-top: 9px;
+  color: #7a8799;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sim-profile-identity,
+.sim-profile-card,
+.sim-profile-bottom > div {
+  border: 1px solid #e9edf2;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(29, 42, 63, .035);
+}
+.sim-profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 27px 30px;
+  margin-bottom: 24px;
+}
+.sim-profile-avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  padding: 5px;
+  border: 1px solid #ffe2ce;
+  border-radius: 21px;
+  background: #fff5ec;
+}
+.sim-profile-avatar img {
+  width: 64px;
+  height: 64px;
+  border-radius: 17px;
+  object-fit: cover;
+}
+.sim-profile-person { flex: 1 1 auto; min-width: 0; }
+.sim-profile-eyebrow {
+  color: #e77722;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.sim-profile-person h2 {
+  margin-top: 6px;
+  color: #1d2939;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+  line-height: 1.4;
+}
+.sim-profile-person p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  color: #6f7b8f;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sim-profile-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid #ffd6ba;
+  border-radius: 11px;
+  color: #dd6c00;
+  background: #fff6ef;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background .2s, transform .2s;
+}
+.sim-profile-view-button:hover { background: #ffebda; transform: translateY(-1px); }
+.sim-profile-section-grid,
+.sim-profile-bottom {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.sim-profile-card {
+  min-width: 0;
+  overflow: hidden;
+}
+.sim-profile-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 23px 24px 19px;
+  border-bottom: 1px solid #f0f2f5;
+}
+.sim-profile-card-heading h2 {
+  color: #253147;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+.sim-profile-card-heading p {
+  color: #8490a2;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.sim-profile-total {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 25px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #df6c00;
+  background: #fff0e5;
+  font-size: 11px;
+  font-weight: 750;
+}
+.sim-profile-rows { padding: 8px 12px 12px; }
+.sim-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 74px;
+  padding: 12px;
+  border-radius: 13px;
+  color: #334155;
+  text-decoration: none;
+  transition: background .18s, transform .18s;
+}
+.sim-profile-link + .sim-profile-link { border-top: 1px solid #f1f3f7; }
+.sim-profile-link:hover { background: #fafbfc; transform: translateX(2px); }
+.sim-profile-row-icon {
+  display: flex;
+  flex: 0 0 43px;
+  align-items: center;
+  justify-content: center;
+  width: 43px;
+  height: 43px;
+  border-radius: 13px;
+}
+.sim-profile-tone-orange { background: #fff0e5; }
+.sim-profile-tone-blue { background: #e9f1ff; }
+.sim-profile-tone-green { background: #e7f8ec; }
+.sim-profile-tone-purple { background: #f2eaff; }
+.sim-profile-tone-orange svg path { stroke: #ed7200; }
+.sim-profile-tone-blue svg path { stroke: #3379ed; }
+.sim-profile-tone-green svg path { stroke: #1c9c53; }
+.sim-profile-tone-purple svg path { stroke: #884de0; }
+.sim-profile-link-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.sim-profile-link-copy strong {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.sim-profile-link-copy > span {
+  color: #8791a1;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.sim-profile-count {
+  display: inline-flex;
+  flex-shrink: 0;
+  min-width: 31px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f3f5f8;
+  color: #4a5870;
+  font-weight: 750;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sim-profile-link > svg { flex-shrink: 0; margin-left: 2px; }
+.sim-profile-link:hover > svg path { stroke: #ed7000; }
+.sim-profile-bottom { margin-top: 22px; }
+.sim-profile-bottom > div {
+  display: flex;
+  align-items: center;
+  min-height: 125px;
+  gap: 15px;
+  padding: 22px 24px;
+}
+.sim-profile-help-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 43px;
+  height: 43px;
+  border-radius: 14px;
+  background: #f2f4f7;
+}
+.sim-profile-bottom h2 { font-size: 14px; font-weight: 750; color: #344054; }
+.sim-profile-bottom p {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8690a0;
+}
+.sim-profile-security { justify-content: space-between; }
+.sim-profile-logout-button,
+.sim-profile-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 43px;
+  padding: 11px 18px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 750;
+  transition: background .2s, transform .2s, box-shadow .2s;
+}
+.sim-profile-logout-button {
+  color: #fff;
+  background: #d92d20;
+  border: 1px solid #d92d20;
+  box-shadow: 0 3px 9px rgba(217, 45, 32, .16);
+}
+.sim-profile-logout-button:hover { background: #b42318; transform: translateY(-1px); }
+.sim-profile-cancel-button {
+  color: #344054;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+}
+.sim-profile-cancel-button:hover { background: #f7f8fa; }
+
+@media (max-width: 1150px) {
+  .sim-profile-section-grid, .sim-profile-bottom { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .sim-profile-page { padding: 24px 16px 45px; }
+  .sim-profile-identity { padding: 22px 18px; flex-wrap: wrap; gap: 14px; }
+  .sim-profile-view-button { width: 100%; }
+  .sim-profile-card-heading { padding: 20px; }
+  .sim-profile-bottom > div { padding: 20px; }
+  .sim-profile-person h2 { font-size: 18px; }
+}
