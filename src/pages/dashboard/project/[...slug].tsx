@@ -1526,6 +1526,7 @@ const ProgramDetailLayout = ({
         ]}
       >
         <>
+          <div className="sim-project-detail-v2">
           <div className="mb-1 mt-5 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 pb-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             {programTabsIdentifier === 'activity' && (
               <>
@@ -2141,6 +2142,7 @@ const ProgramDetailLayout = ({
               </div>
             </HorizontalTabs>
           ) : null}
+          </div>
         </>
       </Dashboard>
 
