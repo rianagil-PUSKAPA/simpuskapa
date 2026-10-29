@@ -108,6 +108,10 @@ export const ProgramInformation = ({ slugIdentifier }: Props) => {
 
   return (
     <>
+      <div className="sim-pd-information-heading">
+        <h2>Project Information</h2>
+        <p>Partner, project scope, team, timeline, and contract documents.</p>
+      </div>
       <div
         ref={scrollsypControllerRef}
         className="sim-pd-information-layout flex flex-col items-start gap-6 sm:gap-8 md:flex-row lg:gap-12 2xl:gap-16"
