@@ -370,7 +370,7 @@ export const BudgetNeedsDetail = ({
     <>
       <div
         className={cn(
-          'flex items-center justify-between border-b border-b-gray-200 pb-6',
+          'sim-pd-budget-heading flex items-center justify-between border-b border-b-gray-200 pb-6',
           programData.approval !== null &&
             programData.approval !== 'revision' &&
             programData.approval !== 'rejected' &&
@@ -547,7 +547,7 @@ export const BudgetNeedsDetail = ({
       {/* This component is to handle empt state at project & activity tab */}
       {isBudgetExist ? (
         <>
-          <div className="my-6 grid grid-cols-3 items-stretch gap-5">
+          <div className="sim-pd-budget-summary my-6 grid grid-cols-3 items-stretch gap-5">
             <div>
               <div className="mb-6 inline-flex items-center gap-3.5 font-extrabold text-gray-500">
                 Total Project Budget
