@@ -1205,7 +1205,6 @@
   outline-offset: 2px;
 }
 .sim-project-detail-v2 [role="tabpanel"] {
-  display: block;
   min-width: 0;
   width: 100%;
   margin: 0;
