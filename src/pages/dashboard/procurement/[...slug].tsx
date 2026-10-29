@@ -158,7 +158,7 @@ const ProcurementDashboard = ({
           },
         ]}
       >
-        <>
+        <div className="sim-modern-forms sim-modern-forms-rf">
           {procurementIdentifier === 'detail' ? (
             <RequisitionDetail
               rfType={requisitionFormDetail.rf_type as RequisitionFormEnum}
@@ -221,7 +221,7 @@ const ProcurementDashboard = ({
               )}
             </>
           )}
-        </>
+        </div>
       </Dashboard>
     </>
   )
