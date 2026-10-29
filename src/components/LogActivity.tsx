@@ -18,6 +18,12 @@ type Props = {
 
 export const LogActivity = ({ globalLog: logData, logProgram, isUsedAtProject = false }: Props) => {
   const [isMounted, setIsMounted] = useState(false)
+  const [projectLogQuery, setProjectLogQuery] = useState('')
+  const filteredProjectLogs = (logProgram || []).filter((log) =>
+    `${log.user?.name || ''} ${log.message || ''} ${log.body || ''}`
+      .toLowerCase()
+      .includes(projectLogQuery.trim().toLowerCase()),
+  )
 
   useEffect(() => {
     const dashboardLeftSide = document.getElementById('dashboard-left-side')
@@ -45,14 +51,24 @@ export const LogActivity = ({ globalLog: logData, logProgram, isUsedAtProject = 
         <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
           <p className="text-lg font-semibold text-gray-900">Log Activity</p>
         </div>
+        <div className="sim-pd-log-tools">
+          <span>{filteredProjectLogs.length} activities</span>
+          <input
+            type="search"
+            aria-label="Search project log activity"
+            placeholder="Search people or events..."
+            value={projectLogQuery}
+            onChange={(event) => setProjectLogQuery(event.target.value)}
+          />
+        </div>
         <div
           id="height-container"
           className="h-0 overflow-auto p-6 scrollbar-thin scrollbar-track-gray-50 scrollbar-thumb-gray-300/50"
         >
-          {logProgram?.length === 0 && (
+          {filteredProjectLogs.length === 0 && (
             <div className="flex h-48 items-center justify-center rounded-xl bg-gray-50">No log activity</div>
           )}
-          {logProgram?.map((log, index) => (
+          {filteredProjectLogs.map((log, index) => (
             <div key={index} className="log-activity-card relative flex items-start gap-3">
               <div className="shrink-0">
                 <Image
