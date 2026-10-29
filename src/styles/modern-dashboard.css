@@ -1770,3 +1770,89 @@
   .sim-project-detail-v2 .sim-pd-budget-activity-row .relative.inline-block { width: calc(100% - 46px); }
   .sim-project-detail-v2 #height-container { padding: 16px; }
 }
+
+
+/* Project Detail v3.3 — aligned panels and orange requisition controls. */
+/* HorizontalTabs adds px-7/xl:px-10 to its panel wrapper. Remove only that extra inset. */
+.sim-project-detail-v2 [role="tablist"] + div {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.sim-project-detail-v2 [role="tabpanel"] {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.sim-project-detail-v2 [role="tabpanel"] > div { min-width: 0; max-width: 100%; }
+/* AccordionTrigger renders a real button inside a Radix header, not directly in the row. */
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  width: 46px !important;
+  height: 46px !important;
+  min-height: 46px;
+  padding: 0 !important;
+  border: 1px solid #f47712 !important;
+  border-radius: 12px !important;
+  background: #f47712 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(244,119,18,.16);
+  transition: background .15s, border-color .15s;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger:hover {
+  background: #d76200 !important;
+  border-color: #d76200 !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger > .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger svg {
+  stroke: #fff !important;
+  width: 20px;
+  height: 20px;
+}
+/* Keep original click handlers, loading and disabled states on RF actions. */
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button[type="button"] {
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 1px solid #f47712 !important;
+  border-radius: 11px;
+  background: #f47712 !important;
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(244,119,18,.12);
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button[type="button"]:not(:disabled):hover {
+  background: #d76200 !important;
+  border-color: #d76200 !important;
+  color: #fff !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button[type="button"]:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+  box-shadow: none;
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button[type="button"] svg { stroke: #fff !important; }
+@media (max-width: 650px) {
+  .sim-project-detail-v2 .sim-pd-budget-rf-actions button[type="button"] {
+    width: 100%;
+    justify-content: center;
+  }
+  .sim-project-detail-v2 .sim-pd-budget-activity-row .sim-pd-budget-chevron-trigger {
+    flex-basis: 42px;
+    width: 42px !important;
+    height: 42px !important;
+    min-height: 42px;
+  }
+}
