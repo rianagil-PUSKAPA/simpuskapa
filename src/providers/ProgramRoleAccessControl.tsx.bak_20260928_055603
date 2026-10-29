@@ -1,0 +1,901 @@
+import { JwtLib } from '@/shared/jwt.lib'
+import { RoleDefinition } from '@/shared/role.access'
+import { employeeApi, programApi } from '@/utils/apiRequestHelper'
+import { getLocalCookie } from '@/utils/globalHelper'
+import { useEffect, useState } from 'react'
+import { useDashboardContext } from './DashboardProvider'
+
+export const ForbiddenAccessDisplay = (task: string) => {
+  return (
+    <div className="flex items-center justify-center rounded-xl border-2 border-gray-200 bg-gray-50 p-10 px-2 text-center">
+      <div>
+        <h6 className="mb-1 font-semibold text-gray-900">Forbidden!</h6>
+        <p className="text-sm text-gray-600">You don't have any access to {task}</p>
+      </div>
+    </div>
+  )
+}
+
+type TaskAccessorRule = {
+  accessor: string
+  allowed: string[]
+  forbid?: string[]
+}
+
+type ProgramTaskAccess = {
+  task: string
+  access: Array<TaskAccessorRule>
+}
+
+export const programTasks = Object.freeze({
+  SUBMIT_BUDGET_NEED: 'Submit Budget Need',
+  ADD_BUDGET_NEED: 'Add Budget Need',
+  CREATE_PROJECT_ACTIVITY: 'Create Project & Activities',
+  EDIT_PROJECT_ACTIVITY: 'Edit Project & Activities',
+  VIEW_PROJECT_ACTIVITY: 'View Project & Activities',
+  VIEW_BUDGET_NEED: 'View Budget Needs',
+  REVISE_BUDGET_NEED: 'Revise Budget Need',
+  VIEW_APPROVED_BUDGET_NOTIFICATION: 'Approved Budget Need',
+  VIEW_PROGRAM: 'View Program',
+  EDIT_PROGRAM_INFO: 'Edit program Info',
+  EDIT_BUDGET_NEED: 'Edit budget need',
+  APPROVE_BUDGET_NEED: 'Approva budget need',
+  VIEW_RF_LIST_AND_DETAIL: 'View Requisition Form List & Detail',
+  APPROVAL_RF_GLOBALLY: 'Approval Requisition Form', // Globally here mean the task at approval PC, PH, TR is the same role (Project Manager & Budget Controller)
+  CREATE_PR_APR: 'Create Payment Request', // PR and APR merge in one task because they're have same role action (action_by)
+  CREATE_APF_AT: 'Create Advance Perdiem Fee & Travel Expense', // APF and ATE merge in one task because they're have same role action (traveller)
+  CREATE_APS: 'Create Advance Payment Statement (Update APR)',
+  APPROVAL_PR_GLOBALLY: 'Approval Payment (PR, APR, APF, ATE) Globally', // Globally here mean the task at approval PR, APR, APF, ATE is the same role (Budget Controller & Head of Finance)
+  VIEW_LIST_PR_GLOBALLY: 'View List Payment (PR, APR, APF, ATE) Globally', // Globally here mean the task at view list PR, APR, APF, ATE is the same role (All Role except Non Program Role)
+  MARK_PAYMENT: 'Mark Payment as Proceed and Paid', // Globally here mean is task (processed and paid) is the same role (Finance Team Only)
+  CHECK_PAYMENT: 'Check payment request', // Globally here mean is task (processed and paid) is the same role (Finance Team Only)
+  VIEW_REJECTED_PAYMENT_MESSAGE: 'View rejected payment message',
+  VIEW_REVISED_PROJECT_MESSAGE: 'View revised project message',
+  CLOSE_RF: 'Close RF',
+})
+
+export const programAccessor = Object.freeze({
+  GRANT_MANAGER: 'Grant Manager',
+  PROGRAM_MANAGER: 'Project Manager',
+  PROGRAM_OFFICER: 'Program Officer',
+  NON_PROGRAM_ROLE: 'Outside Program',
+  HEAD_OF_FINANCE: 'Head of Finance',
+  HEAD_OF_OPERATION: 'Head of Operation',
+  USER_RF_CREATOR: 'RF Creator',
+  FINANCE_TEAM: 'Finance Team',
+  OPERATION_TEAM: 'Operation Team',
+  ACTION_BY: 'Action By',
+  REQUESTER_RF: 'Requester at RF (PC, TR, PH)',
+  TRAVELLER: 'Traveller',
+  SUPERVISOR: 'Supervisor',
+  BUDGET_CONTROLLER: 'Budget Controller',
+})
+
+export const accessActionType = Object.freeze({
+  READ: 'read',
+  UPDATE: 'update',
+  CREATE: 'create',
+  DELETE: 'delete',
+  NOTIFIED: 'notified',
+  SUBMIT: 'submit',
+})
+
+class ProgramAccessControlCore {
+  static readonly access: ProgramTaskAccess[] = [
+    // PROGRAM
+    {
+      task: programTasks.VIEW_REJECTED_PAYMENT_MESSAGE,
+      access: [
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CLOSE_RF,
+      access: [
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.SUBMIT],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.VIEW_REVISED_PROJECT_MESSAGE,
+      access: [
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.SUBMIT_BUDGET_NEED,
+      access: [
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.SUBMIT],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CREATE_PROJECT_ACTIVITY,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        // INTERNAL
+        {
+          accessor: programAccessor.HEAD_OF_OPERATION,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    // {
+    //   task: programTasks.VIEW_PROJECT_ACTIVITY,
+    //   access: [
+    //     {
+    //       accessor: programAccessor.GRANT_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_OFFICER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.NON_PROGRAM_ROLE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.HEAD_OF_FINANCE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //   ],
+    // } as ProgramTaskAccess,
+    {
+      task: programTasks.EDIT_PROJECT_ACTIVITY,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+        // INTERNAL
+        {
+          accessor: programAccessor.HEAD_OF_OPERATION,
+          allowed: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    // {
+    //   task: programTasks.VIEW_PROGRAM,
+    //   access: [
+    //     {
+    //       accessor: programAccessor.GRANT_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_OFFICER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.NON_PROGRAM_ROLE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.HEAD_OF_FINANCE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.HEAD_OF_OPERATION,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.FINANCE_TEAM,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //   ],
+    // } as ProgramTaskAccess,
+    {
+      task: programTasks.EDIT_PROGRAM_INFO,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+
+      ],
+    } as ProgramTaskAccess,
+
+    {
+      task: programTasks.ADD_BUDGET_NEED,
+      access: [
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    // {
+    //   task: programTasks.VIEW_BUDGET_NEED,
+    //   access: [
+    //     {
+    //       accessor: programAccessor.GRANT_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_MANAGER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.PROGRAM_OFFICER,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.NON_PROGRAM_ROLE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //     {
+    //       accessor: programAccessor.HEAD_OF_FINANCE,
+    //       allowed: [accessActionType.READ],
+    //     } as TaskAccessorRule,
+    //   ],
+    // } as ProgramTaskAccess,
+    {
+      task: programTasks.VIEW_APPROVED_BUDGET_NOTIFICATION,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.READ, accessActionType.NOTIFIED],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.READ, accessActionType.NOTIFIED],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.REVISE_BUDGET_NEED,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        // INTERNAL
+        {
+          accessor: programAccessor.SUPERVISOR,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.EDIT_BUDGET_NEED,
+      access: [
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.UPDATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+
+    {
+      task: programTasks.APPROVE_BUDGET_NEED,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    //
+    {
+      task: programTasks.VIEW_RF_LIST_AND_DETAIL,
+      access: [
+        {
+          accessor: programAccessor.NON_PROGRAM_ROLE,
+          forbid: [accessActionType.READ],
+          allowed: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          forbid: [],
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          forbid: [],
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_OPERATION,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.FINANCE_TEAM,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.OPERATION_TEAM,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.ACTION_BY,
+          allowed: [accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.APPROVAL_RF_GLOBALLY,
+      access: [
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.UPDATE],
+          forbid: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.VIEW_LIST_PR_GLOBALLY,
+      access: [
+        {
+          accessor: programAccessor.GRANT_MANAGER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_OFFICER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.REQUESTER_RF,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.TRAVELLER,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_OPERATION,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.FINANCE_TEAM,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.OPERATION_TEAM,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.ACTION_BY,
+          allowed: [accessActionType.READ],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.NON_PROGRAM_ROLE,
+          allowed: [],
+          forbid: [accessActionType.READ],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CREATE_PR_APR,
+      access: [
+        {
+          accessor: programAccessor.ACTION_BY,
+          allowed: [accessActionType.CREATE, accessActionType.READ],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CREATE_APF_AT,
+      access: [
+        {
+          accessor: programAccessor.TRAVELLER,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.APPROVAL_PR_GLOBALLY,
+      access: [
+        {
+          accessor: programAccessor.HEAD_OF_OPERATION,
+          allowed: [accessActionType.UPDATE],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.UPDATE],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.PROGRAM_MANAGER,
+          allowed: [accessActionType.UPDATE],
+          forbid: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.MARK_PAYMENT,
+      access: [
+        {
+          accessor: programAccessor.FINANCE_TEAM,
+          allowed: [accessActionType.UPDATE, accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.UPDATE, accessActionType.READ],
+          forbid: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CHECK_PAYMENT,
+      access: [
+        {
+          accessor: programAccessor.FINANCE_TEAM,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+        {
+          accessor: programAccessor.HEAD_OF_FINANCE,
+          allowed: [accessActionType.CREATE],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+    {
+      task: programTasks.CREATE_APS,
+      access: [
+        {
+          accessor: programAccessor.ACTION_BY,
+          allowed: [accessActionType.CREATE],
+          forbid: [],
+        } as TaskAccessorRule,
+      ],
+    } as ProgramTaskAccess,
+  ]
+}
+
+type Props = {
+  children?: JSX.Element | JSX.Element[]
+  programId: string
+  task: string
+  action: string
+  forceAllow?: boolean
+  isActionBy?: boolean
+  isTraveller?: boolean
+  isRFRequester?: boolean
+  replaceWith?: JSX.Element
+}
+
+const ProgramRoleAccessControlProvider = ({
+  children,
+  programId,
+  task,
+  action,
+  forceAllow = false,
+  replaceWith,
+  isActionBy = false,
+  isTraveller = false,
+  isRFRequester = false,
+}: Props) => {
+  const { handleProgramAccessor, isInternal } = useDashboardContext()
+  const [allow, setAllow] = useState<boolean>(null)
+  const [allowDebounce, setAllowDebounce] = useState<boolean>(null)
+  const [renderView, setRenderView] = useState<boolean>(false)
+
+  // console.log('lelele---allowDebounce', allowDebounce)
+  // console.log('lelele---allow', allow)
+
+  const supervisorId = async (employeeId: string) => {
+    const employeeDetail = await employeeApi.employeeControllerGetEmployeeDetail(employeeId)
+    return employeeDetail.data.data.employee_contracts[0].supervisor_id
+  }
+
+  const checkAccees = async (
+    employeeId: string,
+    userRole: string[],
+    task: string,
+    action: string,
+    programId: string,
+  ) => {
+    // console.log('xxxx-employeeId', employeeId)
+    // console.log('xxxx-userRole', userRole)
+    // console.log('xxxx-task', task)
+    // console.log('xxxx-action', action)
+    // console.log('xxxx-programId', programId)
+
+    // console.log('FORCE ALLOW', forceAllow)
+    if (forceAllow) {
+      return true
+    }
+
+    // console.log(
+    //   `EMPLOYEE ID: ${employeeId} - PROGRAM ID: ${programId} - TASK: ${task}`,
+    // )
+
+    const programDetailResponse = await programApi.programControllerGetProgramDetail(programId)
+    const program = programDetailResponse.data.data
+    // check id desired employee id has access on task as accesor to program
+
+    const programAccessorTypes = []
+
+    const isInternalProject = program?.program_ownership_type === 'INTERNAL'
+
+    const spvId = program?.created_by?.id ? await supervisorId(program.created_by.id) : null
+
+    if (isInternalProject && spvId && String(employeeId) === String(spvId)) {
+      programAccessorTypes.push(programAccessor.SUPERVISOR)
+    }
+
+    // Project Manager hanya berlaku untuk PROGRAM.
+    if (!isInternal && employeeId == program?.program_manager?.id) {
+      programAccessorTypes.push(programAccessor.PROGRAM_MANAGER)
+    }
+    // Grant Manager hanya berlaku untuk PROGRAM.
+    if (!isInternal && employeeId == program?.grant_manager?.id) {
+      programAccessorTypes.push(programAccessor.GRANT_MANAGER)
+    }
+
+    // check if budget controller
+    // if (employeeId == program?.budget_controller?.id) {
+    //  programAccessorTypes.push(programAccessor.BUDGET_CONTROLLER)
+    // }
+
+    // Program Officer hanya berlaku untuk PROGRAM.
+    if (!isInternal && employeeId == program?.program_officer?.id) {
+      programAccessorTypes.push(programAccessor.PROGRAM_OFFICER)
+    }
+    // Check if incoming data is action_by same as logged user
+    if (isActionBy) {
+      programAccessorTypes.push(programAccessor.ACTION_BY)
+    }
+    // Check is currect data is accessed by RF requester
+    if (isRFRequester) {
+      programAccessorTypes.push(programAccessor.REQUESTER_RF)
+    }
+    // Check if incoming data is who_is_travel same as logged user
+    if (isTraveller) {
+      programAccessorTypes.push(programAccessor.TRAVELLER)
+    }
+
+    // check if head of finance
+    if (userRole?.includes(RoleDefinition.HEAD_OF_FINANCE)) {
+      programAccessorTypes.push(programAccessor.HEAD_OF_FINANCE)
+    }
+    // check if teams of finance
+    if (userRole?.includes(RoleDefinition.FINANCE_TEAM)) {
+      programAccessorTypes.push(programAccessor.FINANCE_TEAM)
+    }
+    // check if head of operation
+    if (userRole?.includes(RoleDefinition.HEAD_OF_OPERATION)) {
+      programAccessorTypes.push(programAccessor.HEAD_OF_OPERATION)
+    }
+    // check if teams of operation
+    if (userRole?.includes(RoleDefinition.OPS_TEAM)) {
+      programAccessorTypes.push(programAccessor.OPERATION_TEAM)
+    }
+
+    if (programAccessorTypes.length == 0) {
+      // set as non role if accesor 0
+      programAccessorTypes.push(programAccessor.NON_PROGRAM_ROLE)
+    }
+
+    // console.log('programAccessorTypes', programAccessorTypes)
+    // console.log('userRole', userRole)
+
+    handleProgramAccessor(programAccessorTypes)
+
+    // INTERNAL Budget Needs:
+    // The employee who created the INTERNAL project owns
+    // CREATE / UPDATE / SUBMIT Budget Needs.
+    if (isInternalProject && program?.created_by?.id && String(employeeId) === String(program.created_by.id)) {
+      if (
+        (task === programTasks.ADD_BUDGET_NEED && action === accessActionType.CREATE) ||
+        (task === programTasks.EDIT_BUDGET_NEED && action === accessActionType.UPDATE) ||
+        (task === programTasks.SUBMIT_BUDGET_NEED && action === accessActionType.SUBMIT)
+      ) {
+        return true
+      }
+    }
+
+    // =====================================================
+    // INTERNAL PROJECT CREATOR
+    // =====================================================
+    // created_by adalah owner project/activity/budget pada
+    // project INTERNAL.
+    const isInternalCreator = isInternalProject && employeeId === program?.created_by?.id
+    // INTERNAL creator boleh request revision Budget Needs.
+    if (isInternalCreator && task === programTasks.REVISE_BUDGET_NEED && action === accessActionType.CREATE) {
+      return true
+    }
+
+    // INTERNAL creator boleh mengedit informasi project.
+    if (isInternalCreator && task === programTasks.EDIT_PROGRAM_INFO && action === accessActionType.UPDATE) {
+      return true
+    }
+
+
+    // INTERNAL creator boleh membuat activity.
+    if (isInternalCreator && task === programTasks.CREATE_PROJECT_ACTIVITY && action === accessActionType.CREATE) {
+      return true
+    }
+
+    // INTERNAL creator boleh mengubah activity.
+    if (isInternalCreator && task === programTasks.EDIT_PROJECT_ACTIVITY && action === accessActionType.UPDATE) {
+      return true
+    }
+
+    // INTERNAL creator boleh ADD / EDIT / SUBMIT Budget Needs.
+    if (
+      isInternalCreator &&
+      ((task === programTasks.ADD_BUDGET_NEED && action === accessActionType.CREATE) ||
+        (task === programTasks.EDIT_BUDGET_NEED && action === accessActionType.UPDATE) ||
+        (task === programTasks.SUBMIT_BUDGET_NEED && action === accessActionType.SUBMIT))
+    ) {
+      return true
+    }
+
+    // =====================================================
+    // PROGRAM BUDGET NEEDS
+    // =====================================================
+    // Program Officer boleh edit.
+    if (
+      !isInternal &&
+      employeeId === program?.program_officer?.id &&
+      task === programTasks.EDIT_BUDGET_NEED &&
+      action === accessActionType.UPDATE
+    ) {
+      return true
+    }
+
+    // Grant Manager tidak boleh membuka/edit/add/submit
+    // Budget Needs. Grant Manager hanya untuk approval.
+    if (
+      !isInternal &&
+      employeeId === program?.grant_manager?.id &&
+      ((task === programTasks.ADD_BUDGET_NEED && action === accessActionType.CREATE) ||
+        (task === programTasks.EDIT_BUDGET_NEED && action === accessActionType.UPDATE) ||
+        (task === programTasks.SUBMIT_BUDGET_NEED && action === accessActionType.SUBMIT))
+    ) {
+      return false
+    }
+    // =====================================================
+    // INTERNAL ASSIGNED APPROVER
+    // =====================================================
+    // Untuk project INTERNAL, approver ditentukan oleh
+    // program.program_manager.
+    //
+    // Role GENERAL_MANAGER tidak digunakan untuk menentukan
+    // akses approval.
+    if (
+      isInternalProject &&
+      program?.program_manager?.id &&
+      String(employeeId) === String(program.program_manager.id)
+    ) {
+      if (
+        task === programTasks.APPROVE_BUDGET_NEED &&
+        (action === accessActionType.CREATE || action === accessActionType.UPDATE)
+      ) {
+        return true
+      }
+
+      if (task === programTasks.APPROVAL_RF_GLOBALLY && action === accessActionType.UPDATE) {
+        return true
+      }
+
+      if (task === programTasks.APPROVAL_PR_GLOBALLY && action === accessActionType.UPDATE) {
+        return true
+      }
+    }
+
+    // INTERNAL approval:
+    // the assigned program_manager is the approver shown as General Manager.
+    // Keep this tied to Information People assignment, not a global role.
+    if (
+      program?.program_ownership_type === 'INTERNAL' &&
+      String(employeeId) === String(program?.program_manager?.id) &&
+      (task === programTasks.APPROVAL_RF_GLOBALLY || task === programTasks.APPROVAL_PR_GLOBALLY) &&
+      action === accessActionType.UPDATE
+    ) {
+      return true
+    }
+
+    for (const access of ProgramAccessControlCore.access) {
+      if (access.task == task) {
+        for (const programAccesorType of programAccessorTypes) {
+          for (const taskAccess of access.access) {
+            if (taskAccess.accessor == programAccesorType) {
+              // console.log('kokoko-taskAccess.accessor', taskAccess.accessor)
+              // console.log('kokoko-programAccesorType', programAccesorType)
+              // console.log('kokoko-action', action)
+              // console.log('kokoko-taskAccess.allowed', taskAccess.allowed)
+
+              if (taskAccess.forbid?.length > 0) {
+                // console.log('CHECK FORBID', taskAccess.forbid, action)
+                if (taskAccess.forbid.includes(action)) {
+                  return false
+                }
+              }
+
+              // console.log('CHECK ALLOWED', task, taskAccess.allowed, action)
+              // console.log('taskAccess', taskAccess)
+              if (taskAccess.allowed.includes(action)) {
+                if (task === programTasks.CREATE_PROJECT_ACTIVITY || task === programTasks.EDIT_PROJECT_ACTIVITY) {
+                  if (!isInternal && taskAccess.accessor === programAccessor.HEAD_OF_OPERATION) {
+                    return false
+                  }
+                }
+
+                if (task === programTasks.ADD_BUDGET_NEED) {
+                  if (
+                    !isInternal &&
+                    (taskAccess.accessor === programAccessor.HEAD_OF_OPERATION ||
+                      taskAccess.accessor === programAccessor.SUPERVISOR)
+                  ) {
+                    return false
+                  }
+                }
+
+                if (task === programTasks.REVISE_BUDGET_NEED) {
+                  if (!isInternal && taskAccess.accessor === programAccessor.HEAD_OF_OPERATION) {
+                    return false
+                  }
+                }
+
+                return true
+              }
+
+              // console.log('kokoko-programAccesorType', programAccesorType)
+            }
+          }
+        }
+      }
+    }
+
+    return false
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleForbiddenAccess = (reason: string) => {
+    /*
+     * here u can show alert or modal or anything
+     * or by default replaced by this.props.replaceWith component if exist or just hide the cild component
+     * */
+    setAllow(false)
+  }
+
+  useEffect(() => {
+    setAllow(null)
+    setRenderView(false)
+
+    const exec = async () => {
+      if (!getLocalCookie('auth_token')) {
+        setAllow(false)
+      }
+
+      await JwtLib.decodeOnly(getLocalCookie('auth_token'))
+        .then((claim) => {
+          const employeeId: string = claim['employee_id']
+
+          if (claim['role']?.includes(RoleDefinition.SUPERADMIN)) {
+            setAllow(true)
+            setRenderView(true)
+          } else {
+            checkAccees(employeeId, claim['role'], task, action, programId)
+              .then((allowed) => {
+                if (allowed) {
+                  setAllow(true)
+                } else {
+                  handleForbiddenAccess('NO ACCESS 1')
+                }
+              })
+              .catch((err) => {
+                console.error(`NO ACCESS 2 ${err}`)
+                handleForbiddenAccess('NO ACCESS 2')
+              })
+              .finally(() => {
+                setRenderView(true)
+              })
+          }
+        })
+        .catch((err) => {
+          handleForbiddenAccess(`NO ACCESS 3 ${err}`)
+        })
+    }
+
+    exec()
+    setAllowDebounce(true)
+  }, [getLocalCookie('auth_token'), programId, task, action, forceAllow, isActionBy, isTraveller, isRFRequester])
+
+  if (allowDebounce === null || allow === null || renderView === false) {
+    return <></>
+  }
+
+  if (!allow) {
+    return <>{replaceWith}</>
+  }
+
+  return <>{children}</>
+}
+
+export default ProgramRoleAccessControlProvider
