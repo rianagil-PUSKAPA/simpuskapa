@@ -73,7 +73,12 @@ export default function ProfileInfo() {
   const router = useRouter()
   const [confirmLogout, setConfirmLogout] = useState(false)
 
-  const { data: notification, trigger: loadNotifications } = useSWRMutation(
+  const {
+    data: notification,
+    trigger: loadNotifications,
+    error: notificationsError,
+    isMutating: notificationsLoading,
+  } = useSWRMutation(
     'profileInfoNotifications',
     getPersonalizedNotification,
   )
@@ -81,6 +86,8 @@ export default function ProfileInfo() {
   useEffect(() => {
     loadNotifications()
   }, [loadNotifications])
+
+  const notificationReady = notification !== undefined && notification !== null
 
   const approval = {
     timeoff: Number(notification?.need_approval_timeoff_total || 0),
@@ -132,6 +139,16 @@ export default function ProfileInfo() {
             )}
           </section>
 
+          {!notificationReady && (
+            <div className="sim-profile-notification-state" role="status">
+              {notificationsError
+                ? 'Unable to load your request counts. This does not mean your request records were removed.'
+                : notificationsLoading ? 'Loading request counts for your account...' : 'Preparing request counts...'}
+              {notificationsError && (
+                <button type="button" onClick={() => loadNotifications()}>Retry</button>
+              )}
+            </div>
+          )}
           <div className="sim-profile-section-grid">
             <ProfileSection title="Account Settings" description="Your personal information and preferences">
               <ProfileRow
@@ -159,31 +176,31 @@ export default function ProfileInfo() {
             <ProfileSection
               title="Needs Approval"
               description="Requests waiting for your approval"
-              total={approval.timeoff + approval.budget + approval.requisition + approval.payment}
+              total={notificationReady ? approval.timeoff + approval.budget + approval.requisition + approval.payment : undefined}
             >
-              <ProfileRow href="/dashboard/user/need-approval?tab=timeoff-request" title="Time Off Request" description="Employee leave approvals" count={approval.timeoff} icon={<CalendarIcon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/need-approval?tab=program-budget" title="Project Budget" description="Budget requests to review" count={approval.budget} tone="blue" icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/need-approval?tab=procurement-request" title="Procurement Request" description="Requisition approvals" count={approval.requisition} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/need-approval?tab=payment-request" title="Payment Request" description="Payment approvals" count={approval.payment} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-approval?tab=timeoff-request" title="Time Off Request" description="Employee leave approvals" count={notificationReady ? approval.timeoff : undefined} icon={<CalendarIcon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-approval?tab=program-budget" title="Project Budget" description="Budget requests to review" count={notificationReady ? approval.budget : undefined} tone="blue" icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-approval?tab=procurement-request" title="Procurement Request" description="Requisition approvals" count={notificationReady ? approval.requisition : undefined} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-approval?tab=payment-request" title="Payment Request" description="Payment approvals" count={notificationReady ? approval.payment : undefined} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
             </ProfileSection>
 
             <ProfileSection
               title="Need Action"
               description="Requests requiring your next step"
-              total={action.requisition + action.checking + action.payment}
+              total={notificationReady ? action.requisition + action.checking + action.payment : undefined}
             >
-              <ProfileRow href="/dashboard/user/need-action?tab=requisition-form" title="Requisition Form" description="Items assigned to you" count={action.requisition} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/need-action?tab=payment-request-check" title="Payment Request (Check)" description="Payments to verify" count={action.checking} tone="blue" icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/need-action?tab=payment-request-pay" title="Payment Request (Pay)" description="Payments to process" count={action.payment} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-action?tab=requisition-form" title="Requisition Form" description="Items assigned to you" count={notificationReady ? action.requisition : undefined} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-action?tab=payment-request-check" title="Payment Request (Check)" description="Payments to verify" count={notificationReady ? action.checking : undefined} tone="blue" icon={<CheckVerified01Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/need-action?tab=payment-request-pay" title="Payment Request (Pay)" description="Payments to process" count={notificationReady ? action.payment : undefined} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
             </ProfileSection>
 
             <ProfileSection
               title="Request Tracking"
               description="Monitor the progress of your submissions"
-              total={tracking.requisition + tracking.payment}
+              total={notificationReady ? tracking.requisition + tracking.payment : undefined}
             >
-              <ProfileRow href="/dashboard/user/request-tracking?tab=requisition-form" title="Requisition Form" description="Track submitted requisitions" count={tracking.requisition} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
-              <ProfileRow href="/dashboard/user/request-tracking?tab=payment-request" title="Payment Request" description="Track submitted payments" count={tracking.payment} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/request-tracking?tab=requisition-form" title="Requisition Form" description="Track submitted requisitions" count={notificationReady ? tracking.requisition : undefined} tone="green" icon={<File04Icon className="h-5 w-5 stroke-primary-600" />} />
+              <ProfileRow href="/dashboard/user/request-tracking?tab=payment-request" title="Payment Request" description="Track submitted payments" count={notificationReady ? tracking.payment : undefined} tone="purple" icon={<BankNote01Icon className="h-5 w-5 stroke-primary-600" />} />
             </ProfileSection>
           </div>
 
