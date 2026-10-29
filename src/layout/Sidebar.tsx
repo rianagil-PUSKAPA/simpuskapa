@@ -114,10 +114,10 @@ export const Sidebar = ({ activeSidebar }: Props) => {
   return (
     <>
       <div className="overlay-dashboard" onClick={removeDashboardActiveState}></div>
-      <aside className={cn('sidebar-dashboard group hover:w-60 xl:hover:w-64', isCollapsed ? 'collapsed w-24' : '')}>
+      <aside className={cn('sidebar-dashboard sim-modern-sidebar group hover:w-60 xl:hover:w-64', isCollapsed ? 'collapsed w-24' : '')}>
         <div
           className={cn(
-            'fixed left-0 top-0 z-10 flex items-center border-b border-r border-b-gray-200 border-r-gray-200 bg-white px-6 py-5 duration-300 group-hover:w-60 group-hover:justify-between xl:group-hover:w-64',
+            'sim-sidebar-brand fixed left-0 top-0 z-10 flex items-center border-b border-r border-b-gray-200 border-r-gray-200 bg-white px-6 py-5 duration-300 group-hover:w-60 group-hover:justify-between xl:group-hover:w-64',
             isCollapsed ? 'w-24 justify-center' : 'w-60 justify-between xl:w-64',
           )}
         >
@@ -184,7 +184,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   href={'/dashboard'}
                   className={cn(
                     'cursor-pointer whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Home' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Home' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Home
@@ -220,7 +220,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   }}
                   className={cn(
                     'cursor-pointer whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Project List' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Project List' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Project List
@@ -258,7 +258,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/finance/reporting"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Reporting' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Reporting' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     Reporting
@@ -267,7 +267,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/finance/payment-request"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Payment Request' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Payment Request' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     <span className="flex min-w-0 flex-1 items-center">
@@ -283,7 +283,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                       href="/dashboard/finance/employees-tax"
                       className={cn(
                         'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                        activeSidebar === 'Employee’s Tax' && 'bg-gray-50 text-gray-700',
+                        activeSidebar === 'Employee’s Tax' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                       )}
                     >
                       Employee’s Tax
@@ -316,7 +316,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   href="/dashboard/procurement"
                   className={cn(
                     'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Requisition Form' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Requisition Form' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   <span className="flex min-w-0 flex-1 items-center">
@@ -362,7 +362,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   href="/dashboard/external/vendor-adm"
                   className={cn(
                     'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Vendor Adm' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Vendor Adm' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Vendor Adm
@@ -417,7 +417,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     }}
                     className={cn(
                       'cursor-pointer whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Internal Needs' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Internal Needs' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     Internal Needs
@@ -428,7 +428,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   onClick={() => handleInternal(false)}
                   className={cn(
                     'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Employee List' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Employee List' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Employee List
@@ -443,7 +443,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/internal/employment-contract"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Employee Contract' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Employee Contract' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     Employee Contract
@@ -459,7 +459,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/internal/evaluation"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Perf. Evaluation' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Perf. Evaluation' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     Perf. Evaluation
@@ -469,7 +469,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   href="/dashboard/internal/timeoff/all?tab=calendar-view"
                   className={cn(
                     'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Time Off' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Time Off' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Time Off
@@ -482,7 +482,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/internal/timeoff/requests"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'Time Off Request' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'Time Off Request' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     Time Off Request
@@ -537,7 +537,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                   href="/"
                   className={cn(
                     'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                    activeSidebar === 'Tutorial' && 'bg-gray-50 text-gray-700',
+                    activeSidebar === 'Tutorial' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                   )}
                 >
                   Tutorial
@@ -571,7 +571,7 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     href="/dashboard/admin-zone/user-management"
                     className={cn(
                       'whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
-                      activeSidebar === 'User Management' && 'bg-gray-50 text-gray-700',
+                      activeSidebar === 'User Management' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
                     )}
                   >
                     User Management
