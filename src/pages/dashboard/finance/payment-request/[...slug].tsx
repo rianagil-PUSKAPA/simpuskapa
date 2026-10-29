@@ -123,7 +123,7 @@ const PaymentRequest = ({
         ]}
       >
         {/* FORMS */}
-        <>
+        <div className={paymentRequestIdentifier.toUpperCase() === 'PR' ? 'sim-modern-forms sim-modern-forms-pr' : ''}>
           {paymentRequestIdentifier.toUpperCase() === 'PR' && (
             <NormalPaymentRequest
               programDetail={programDetail}
@@ -174,7 +174,7 @@ const PaymentRequest = ({
               travellerPerdiemTax={travellerPerdiemTax}
             />
           )}
-        </>
+        </div>
       </Dashboard>
     </>
   )
