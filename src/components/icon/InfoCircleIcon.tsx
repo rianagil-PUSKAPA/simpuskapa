@@ -1,0 +1,45 @@
+import { useEffect, useState } from 'react'
+
+interface IconProps {
+  className?: string
+  error?: boolean
+}
+
+/**
+ *
+ * @summary Link External 02 Icon
+ * @param {string} className contain 3 elements, height, width, colors (colors mostly be start with stroke-)
+ */
+
+export const InfoCircleIcon = ({ className, error }: IconProps) => {
+  const [widthParameter, setWidthParameter] = useState<string | null>('h-4')
+  const [heightParameter, setHeightParameter] = useState<string | null>('w-4')
+  const [colorsParameter, setColorsParameter] = useState<string | null>('stroke-gray-400')
+
+  useEffect(() => {
+    if (className) {
+      const [height, width, colors] = className.split(' ')
+
+      setHeightParameter(height)
+      setWidthParameter(width)
+      setColorsParameter(colors)
+    }
+  }, [className])
+
+  return (
+    <svg
+      className={`${widthParameter} ${heightParameter}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M12 16V12M12 8H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z"
+        className={error ? 'stroke-error-500' : colorsParameter}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}

@@ -1,0 +1,15 @@
+{
+  "message": "success",
+  "data": [
+    {
+      "E164": "57",
+      "phone_code": "57",
+      "country_name": "Colombia"
+    },
+    {
+      "E164": "62",
+      "phone_code": "62",
+      "country_name": "Indonesia"
+    }
+  ]
+}
