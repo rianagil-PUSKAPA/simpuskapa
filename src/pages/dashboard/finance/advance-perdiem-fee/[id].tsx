@@ -895,7 +895,17 @@ export const AdvancePerdiemFeeDetail = ({
           },
         ]}
       >
-        <div className="sim-modern-forms sim-modern-forms-payment">
+        <div
+          className="sim-modern-forms sim-modern-forms-payment"
+          data-sim-print-ready={
+            prDetail.finance_checking_process_status === PRFinanceCheckingStatus.CHECKED &&
+            prDetail.program_manager_approval === PRApprovalStatus.APPROVED &&
+            Boolean(prDetail.processed_by) &&
+            Boolean(prDetail.paid_at)
+              ? 'true'
+              : 'false'
+          }
+        >
           <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-gray-900">Advance Perdiem Fee</h1>
