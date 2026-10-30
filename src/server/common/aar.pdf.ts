@@ -90,9 +90,13 @@ export function buildAarPdf(answers: AarAnswers, attachments: Attachment[], subm
         ? (attachments.map((a) => a.name).join(', ') || '-')
         : aarDisplayValue(field, answers)
       const lines = wrap(value, 91)
-      ensure(22)
-      text(String(field.id).padStart(2, '0') + '  ' + field.label, LEFT + 2, y, 9.5, true, C.violet)
-      y += 18
+      const titleLines = wrap(String(field.id).padStart(2, '0') + '  ' + field.label, 85)
+      for (const titleLine of titleLines) {
+        ensure(14)
+        text(titleLine, LEFT + 2, y, 9.5, true, C.violet)
+        y += 14
+      }
+      y += 7
       for (const line of lines) {
         ensure(15)
         text(line, LEFT + 22, y, 10, false, C.ink)
