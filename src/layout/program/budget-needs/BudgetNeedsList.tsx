@@ -119,8 +119,70 @@ const getRecommendedRFType = (
  * budget items cannot be submitted together using any existing RF type.
  * This is UI feedback only; the original requisition validation is untouched.
  */
-const RF_SELECTION_WARNING = 'Please make sure the checked items match one vendor category only, so the correct Create Request Form can be used.'
 const RF_SELECTION_TOAST_ID = 'budget-needs-rf-category-mismatch'
+
+/* Highlight only checked budget rows that conflict with the largest compatible
+   Vendor Type group. Procurement types such as Event and Services can coexist;
+   Consultant, Travel, and Staff require their respective RF forms. */
+const getMismatchedRFRowIds = (projects: ProjectBudgetsImproved[]): string[] => {
+  const selected = projects.flatMap((project) =>
+    project.activities.flatMap((activity) =>
+      activity.budgets
+        .filter((budget) => budget.is_checked)
+        .map((budget) => ({
+          id: budget.id,
+          type: budget.vendor_category_information.vendor_type.name.trim().toLowerCase(),
+        })),
+    ),
+  )
+
+  const rfGroup = (type: string): 'PC' | 'TR' | 'PH' | 'SC' => {
+    if (type === 'consultant') return 'PH'
+    if (type === 'travel') return 'TR'
+    if (type === 'staff' || type === 'staff cost') return 'SC'
+    return 'PC'
+  }
+
+  const grouped = new Map<'PC' | 'TR' | 'PH' | 'SC', string[]>()
+  for (const row of selected) {
+    const group = rfGroup(row.type)
+    grouped.set(group, [...(grouped.get(group) || []), row.id])
+  }
+
+  if (grouped.size < 2) return []
+
+  // Choose the largest compatible group. PC is preferred if counts are tied.
+  const order: Array<'PC' | 'TR' | 'PH' | 'SC'> = ['PC', 'TR', 'PH', 'SC']
+  const preferred = order.reduce((best, group) =>
+    (grouped.get(group)?.length || 0) > (grouped.get(best)?.length || 0) ? group : best,
+  'PC' as 'PC' | 'TR' | 'PH' | 'SC')
+  const allowed = new Set(grouped.get(preferred) || [])
+
+  return selected.filter((row) => !allowed.has(row.id)).map((row) => row.id)
+}
+
+const flashMismatchedRFRows = (budgetIds: string[]) => {
+  if (typeof window === 'undefined' || !budgetIds.length) return
+  window.requestAnimationFrame(() => {
+    const invalidIds = new Set(budgetIds)
+    const rows = document.querySelectorAll<HTMLElement>('[data-sim-budget-row-id]')
+    for (const row of Array.from(rows)) {
+      if (!invalidIds.has(row.getAttribute('data-sim-budget-row-id') || '')) continue
+      for (const element of [row, ...Array.from(row.children)] as HTMLElement[]) {
+        if (typeof element.animate !== 'function') continue
+        const original = window.getComputedStyle(element).backgroundColor
+        element.animate(
+          [
+            { backgroundColor: original, offset: 0 },
+            { backgroundColor: '#ffe0e7', offset: 0.5 },
+            { backgroundColor: original, offset: 1 },
+          ],
+          { duration: 480, iterations: 2, easing: 'ease-in-out' },
+        )
+      }
+    }
+  })
+}
 
 const notifyRFSelectionMismatch = (projects: ProjectBudgetsImproved[]) => {
   const selectedProjects = projects.filter((project) =>
@@ -130,10 +192,13 @@ const notifyRFSelectionMismatch = (projects: ProjectBudgetsImproved[]) => {
     selectedProjects.length === 1 && getRecommendedRFType(projects, selectedProjects[0]) !== null
 
   if (selectedProjects.length > 0 && !validSelection) {
-    toast.warning(RF_SELECTION_WARNING, {
-      toastId: RF_SELECTION_TOAST_ID,
-      autoClose: 6500,
-    })
+    toast.warning(
+      <span>
+        Please make sure the checked items match the required <strong>Vendor Type</strong> to enable Create Request Form!
+      </span>,
+      { toastId: RF_SELECTION_TOAST_ID, autoClose: 6500 },
+    )
+    flashMismatchedRFRows(getMismatchedRFRowIds(projects))
   } else {
     toast.dismiss(RF_SELECTION_TOAST_ID)
   }
@@ -690,6 +755,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                                         budget.remaining != null && budget.remaining <= 0 ? 'bg-error-200' : '',
                                       )}
                                       key={budget.id}
+                                      data-sim-budget-row-id={budget.id}
                                     >
                                       {approval === 'success' ? (
                                         <div className="flex w-16 justify-center">
