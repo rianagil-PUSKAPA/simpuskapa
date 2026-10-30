@@ -612,7 +612,13 @@ function initialize() {
     update()
   }
   const observer = new MutationObserver(update)
-  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true })
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['data-sim-print-ready'],
+  })
 }
 
 initialize()
