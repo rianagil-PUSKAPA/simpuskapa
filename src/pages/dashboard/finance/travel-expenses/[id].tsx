@@ -1582,7 +1582,7 @@ export const TravelExpensesDetail = ({
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-5 gap-5 border-b border-b-gray-200 py-6">
+            <div className="sim-te-amount-summary grid grid-cols-5 gap-5 border-b border-b-gray-200 py-6">
               <div>
                 <p className="mb-2 text-xs font-bold text-gray-500">Total Travel Expenses</p>
                 <p className="text-4xl font-semibold text-gray-900">
