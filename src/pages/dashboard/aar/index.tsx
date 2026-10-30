@@ -121,7 +121,7 @@ const AARIndex = ({ canAccessAar }: { canAccessAar: boolean }) => {
           { title: 'After Activity Report', url: '' },
         ]}
       >
-        <div className="sim-project-list-v2 min-h-[calc(100vh-80px)] bg-[#f7f8fa]">
+        <div className="sim-project-list-v2 sim-aar-summary-align min-h-[calc(100vh-80px)] bg-[#f7f8fa]">
           <div className="flex flex-col gap-4 border-b border-gray-200 bg-white px-7 py-6 sm:flex-row sm:items-center sm:justify-between xl:px-10">
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.15em] text-primary-600">
@@ -166,7 +166,6 @@ const AARIndex = ({ canAccessAar }: { canAccessAar: boolean }) => {
                 <div
                   key={card.label}
                   className="sim-modern-panel rounded-2xl border border-[#e9edf3] bg-white p-5 shadow-sm"
-                  style={{ padding: '20px', borderTopColor: '#e9edf3' }}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{card.label}</p>
                   <div className="mt-3 flex items-center gap-3">
