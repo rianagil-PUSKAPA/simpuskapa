@@ -465,6 +465,14 @@ export function printCurrentForm() {
     window.alert('Budget item rows are not ready to print. Please refresh the form and try again.')
     return
   }
+  if (printKind(number) === 'TE') {
+    const required = ['Total Travel Expenses', 'Perdiem', 'Transport', 'Others', 'Estimated Payment Date']
+    const missing = required.filter((label) => !findValue(root, [label]))
+    if (missing.length) {
+      window.alert('Travel Expenses print data is incomplete: ' + missing.join(', '))
+      return
+    }
+  }
   const title = formTitle(root)
   const popup = window.open('', '_blank')
   if (!popup) {
