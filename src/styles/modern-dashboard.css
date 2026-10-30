@@ -3181,3 +3181,27 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Budget Needs: RF choice highlights only matching selected budget rows. */
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button.sim-budget-rf-choice[type='button'] {
+  background: #ffffff !important;
+  border-color: #d9e1eb !important;
+  color: #34465f !important;
+  box-shadow: none !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button.sim-budget-rf-choice[type='button']:not(:disabled):hover {
+  background: #fff8f2 !important;
+  border-color: #f4a05b !important;
+  color: #b45309 !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button.sim-budget-rf-choice--active[type='button'] {
+  background: #f47712 !important;
+  border-color: #f47712 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(244, 119, 18, 0.2) !important;
+}
+.sim-project-detail-v2 .sim-pd-budget-rf-actions button.sim-budget-rf-choice--active[type='button']:not(:disabled):hover {
+  background: #d76200 !important;
+  border-color: #d76200 !important;
+  color: #ffffff !important;
+}
