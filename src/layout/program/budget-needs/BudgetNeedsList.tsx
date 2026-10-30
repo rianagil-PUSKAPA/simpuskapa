@@ -27,6 +27,16 @@ import { resetServerContext } from 'react-beautiful-dnd'
 import { ActivityBudgetList, ProgramDetailApprovalEnum, ProjectActivity } from 'sdk/api'
 import useSWRMutation from 'swr/mutation'
 import { useRequisitionRequest } from './hooks/useRequisitionRequest'
+import { RequisitionType } from './constants'
+import {
+  hasInvalidVendorForPC,
+  hasTravelVendor,
+  hasNonTravelVendor,
+  hasConsultantVendor,
+  hasStaffCostVendor,
+  hasMultiplePerdiemCategories,
+  hasMultipleOtherCategories,
+} from './utils/vendorValidation'
 import { useScrollbarSync } from './hooks/useScrollbarSync'
 
 resetServerContext()
@@ -62,6 +72,45 @@ export type ProjectBudgetsImproved = {
   ordering_seq: number
   activities: ProjectActivityModified[]
   is_disabled: boolean
+}
+
+/**
+ * Presentation only: recommend the requisition form matching the checked budget rows.
+ * Use the existing RF validators; do not change handlers or permission rules.
+ */
+const getRecommendedRFType = (
+  allProjects: ProjectBudgetsImproved[],
+  project: ProjectBudgetsImproved,
+): RequisitionType | null => {
+  const selectedProjects = allProjects.filter((item) =>
+    item.activities.some((activity) => activity.budgets.some((budget) => budget.is_checked)),
+  )
+  // The existing RF handler only supports one selected project at a time.
+  if (selectedProjects.length !== 1 || selectedProjects[0].id !== project.id) return null
+
+  const checkedActivities = project.activities
+    .map((activity) => ({
+      ...activity,
+      budgets: activity.budgets.filter((budget) => budget.is_checked),
+    }))
+    .filter((activity) => activity.budgets.length > 0)
+
+  const totalSelected = checkedActivities.reduce((count, activity) => count + activity.budgets.length, 0)
+  if (totalSelected === 0) return null
+
+  if (totalSelected === 1 && hasConsultantVendor(checkedActivities)) return 'PH'
+  if (totalSelected === 1 && hasStaffCostVendor(checkedActivities)) return 'SC'
+  if (
+    hasTravelVendor(checkedActivities) &&
+    !hasNonTravelVendor(checkedActivities) &&
+    !hasMultiplePerdiemCategories(checkedActivities) &&
+    !hasMultipleOtherCategories(checkedActivities)
+  ) return 'TR'
+
+  // PC applies to procurement/other types, not to personnel, travel, or staff.
+  if (!hasInvalidVendorForPC(checkedActivities) && !hasStaffCostVendor(checkedActivities)) return 'PC'
+
+  return null
 }
 
 export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) => {
@@ -226,6 +275,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
     setProjectBudgets((prev) => updateDataSample(prev))
   }, [updateDataSample])
 
+  const recommendedRFByProject = new Map(
+    projectBudgets.map((project) => [project.id, getRecommendedRFType(projectBudgets, project)] as const),
+  )
+
   if (awaitCalculationDataIsDone === false) {
     return (
       <div className="mt-10 flex items-center justify-center">
@@ -368,6 +421,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                       size="md"
                       variant="secondary-gray"
                       isLoading={loadingButtonStatement.pc}
+                      className={cn(
+                        'sim-budget-rf-choice',
+                        recommendedRFByProject.get(projectActivity.id) === 'PC' && 'sim-budget-rf-choice--active',
+                      )}
                       onClick={() => handleRequisitionRequest('PC', projectActivity.code)}
                     >
                       Procurement Req (PC)
@@ -378,6 +435,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                       size="md"
                       variant="secondary-gray"
                       isLoading={loadingButtonStatement.tr}
+                      className={cn(
+                        'sim-budget-rf-choice',
+                        recommendedRFByProject.get(projectActivity.id) === 'TR' && 'sim-budget-rf-choice--active',
+                      )}
                       onClick={() => handleRequisitionRequest('TR', projectActivity.code)}
                     >
                       Travel Req (TR)
@@ -388,6 +449,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                       size="md"
                       variant="secondary-gray"
                       isLoading={loadingButtonStatement.ph}
+                      className={cn(
+                        'sim-budget-rf-choice',
+                        recommendedRFByProject.get(projectActivity.id) === 'PH' && 'sim-budget-rf-choice--active',
+                      )}
                       onClick={() => handleRequisitionRequest('PH', projectActivity.code)}
                     >
                       Personnel Hire Req (PH)
@@ -398,6 +463,10 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
                       size="md"
                       variant="secondary-gray"
                       isLoading={loadingButtonStatement.sc}
+                      className={cn(
+                        'sim-budget-rf-choice',
+                        recommendedRFByProject.get(projectActivity.id) === 'SC' && 'sim-budget-rf-choice--active',
+                      )}
                       onClick={() => handleRequisitionRequest('SC', projectActivity.code)}
                     >
                       Staff Cost
