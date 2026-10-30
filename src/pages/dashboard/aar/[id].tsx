@@ -94,6 +94,8 @@ const AARForm = () => {
   const [saveStatus, setSaveStatus] = useState('All changes saved')
   const savingChain = useRef<Promise<unknown>>(Promise.resolve())
   const hydrated = useRef(false)
+  const editRevision = useRef(0)
+  const submittingInFlight = useRef(false)
   const draft = report?.status === 'draft'
   const progress = aarProgress(answers)
   const load = useCallback(async () => {
@@ -112,6 +114,7 @@ const AARForm = () => {
   useEffect(() => { load() }, [load])
   const change = (n: number, value: string) => {
     if (!draft) return
+    editRevision.current += 1
     setAnswers((prev) => ({ ...prev, ['q' + n]: value }))
     setDirty(true)
     setSaveStatus('Unsaved changes')
@@ -124,21 +127,29 @@ const AARForm = () => {
   }, [id])
   useEffect(() => {
     if (!hydrated.current || !dirty || !draft || !id) return
+    const revision = editRevision.current
     const timer = window.setTimeout(() => {
+      if (submittingInFlight.current) return
       setSaveStatus('Saving draft...')
       saveNow(answers).then((saved) => {
-        if (saved) { setReport(saved); setSaveStatus('Draft saved'); setDirty(false) }
+        if (saved) {
+          setReport(saved)
+          if (revision === editRevision.current) { setSaveStatus('Draft saved'); setDirty(false) }
+          else setSaveStatus('Unsaved changes')
+        }
       }).catch(() => setSaveStatus('Auto-save failed — use Save Draft'))
     }, 1800)
     return () => window.clearTimeout(timer)
   }, [answers, dirty, draft, id, saveNow])
   const manualSave = async () => {
     if (!draft) return
+    const revision = editRevision.current
     setSaving(true)
     try {
       const updated = await saveNow(answers)
       if (updated) setReport(updated)
-      setDirty(false); setSaveStatus('Draft saved'); toast.success('Draft AAR berhasil disimpan')
+      if (revision === editRevision.current) { setDirty(false); setSaveStatus('Draft saved') }
+      toast.success('Draft AAR berhasil disimpan')
     } catch { toast.error('Gagal menyimpan draft') }
     finally { setSaving(false) }
   }
@@ -167,6 +178,7 @@ const AARForm = () => {
       return
     }
     if (date(answers.q5) > date(answers.q6)) { setStep(0); setPreview(false); toast.error('Tanggal selesai tidak boleh sebelum tanggal mulai'); return }
+    submittingInFlight.current = true
     setSubmitting(true)
     try {
       await savingChain.current.catch(() => undefined)
@@ -175,7 +187,7 @@ const AARForm = () => {
       if (result.email_status === 'sent') toast.success('AAR disubmit. PDF dikirim ke email uji.')
       else toast.warning('AAR berhasil disubmit, namun email PDF belum terkirim. Silakan coba Retry Email.')
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Submit AAR gagal') }
-    finally { setSubmitting(false) }
+    finally { submittingInFlight.current = false; setSubmitting(false) }
   }
   const retryEmail = async () => {
     try { setReport(await aarApi.retryEmail(id)); toast.success('Pengiriman email dicoba ulang') }
