@@ -146,12 +146,12 @@ function budgetColumns(kind: PrintFormKind): Array<{ name: string; pattern: RegE
   const vendorCategory = { name: 'Vendor Category', pattern: /^vendor category$/i }
   const qty = { name: 'Qty', pattern: /^(qty|quantity)$/i }
   const packageQty = { name: 'Pckg Qty', pattern: /^(pckg qty|pkg qty|package qty)$/i }
-  const unitCost = { name: 'Unit Cost', pattern: /^unit cost$/i }
+  const unitCost = { name: 'Unit Cost', pattern: /^unit cost(?: \(perdiem\))?$/i }
   const rfTotal = { name: 'Total RF', pattern: /^total requested \(rf\)$|^total rf$|^total request$/i }
   const prTotal = { name: 'Total PR', pattern: /^total payment request$|^total payment requested$|^total pr$/i }
   const paymentTotal = { name: 'Total Payment', pattern: /^total payment request$|^total payment requested$|^total payment$/i }
   const advance = { name: 'Advance Payment', pattern: /^advance payment$/i }
-  const expenses = { name: 'Expenses', pattern: /^expenses$|^total expenses$/i }
+  const expenses = { name: 'Expenses', pattern: /^expenses$|^total expenses$|^total$/i }
   if (kind === 'RF') return [no, description, vendorType, qty, packageQty, unitCost, rfTotal]
   if (kind === 'PR') return [no, description, vendorType, qty, packageQty, unitCost, prTotal]
   if (kind === 'APR') return [no, description, vendorCategory, qty, packageQty, unitCost, paymentTotal, advance]
