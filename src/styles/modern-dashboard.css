@@ -3181,3 +3181,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* AAR statistics only — override Project List's last-child spacing rule. */
+.sim-project-list-v2.sim-aar-summary-align > div:nth-child(2) > div:first-child > div {
+  padding: 20px !important;
+  border-top: 1px solid #e9edf3 !important;
+}
