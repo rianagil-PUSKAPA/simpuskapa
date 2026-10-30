@@ -26,7 +26,7 @@ function wrap(value: string, max = 92): string[] {
   const result: string[] = []
   for (const line of String(value || '-').split(/\r?\n/)) {
     let current = ''
-    for (const word of line.split(/\s+/)) {
+    for (let word of line.split(/\s+/)) {
       if (!word) continue
       if ((current + ' ' + word).length > max && current) {
         result.push(current)
