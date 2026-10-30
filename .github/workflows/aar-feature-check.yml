@@ -1,0 +1,28 @@
+name: AAR feature typecheck
+on:
+  push:
+    branches: [feature/after-activity-report-20261030]
+  pull_request:
+    branches: [trunk]
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: package.json
+      - name: Install pnpm
+        run: npm install --global pnpm@9.6.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+      - name: Typecheck all frontend and backend sources
+        run: pnpm exec tsc --noEmit --pretty false
+      - name: Nest backend compile
+        run: pnpm exec nest build --path ./tsconfig.server.json
