@@ -26,6 +26,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { resetServerContext } from 'react-beautiful-dnd'
 import { ActivityBudgetList, ProgramDetailApprovalEnum, ProjectActivity } from 'sdk/api'
 import useSWRMutation from 'swr/mutation'
+import { toast } from 'react-toastify'
 import { useRequisitionRequest } from './hooks/useRequisitionRequest'
 import { RequisitionType } from './constants'
 import {
@@ -113,6 +114,31 @@ const getRecommendedRFType = (
   return null
 }
 
+/**
+ * Show one contextual toast immediately after a checklist change when the selected
+ * budget items cannot be submitted together using any existing RF type.
+ * This is UI feedback only; the original requisition validation is untouched.
+ */
+const RF_SELECTION_WARNING = 'Please make sure the checked items match one vendor category only, so the correct Create Request Form can be used.'
+const RF_SELECTION_TOAST_ID = 'budget-needs-rf-category-mismatch'
+
+const notifyRFSelectionMismatch = (projects: ProjectBudgetsImproved[]) => {
+  const selectedProjects = projects.filter((project) =>
+    project.activities.some((activity) => activity.budgets.some((budget) => budget.is_checked)),
+  )
+  const validSelection =
+    selectedProjects.length === 1 && getRecommendedRFType(projects, selectedProjects[0]) !== null
+
+  if (selectedProjects.length > 0 && !validSelection) {
+    toast.warning(RF_SELECTION_WARNING, {
+      toastId: RF_SELECTION_TOAST_ID,
+      autoClose: 6500,
+    })
+  } else {
+    toast.dismiss(RF_SELECTION_TOAST_ID)
+  }
+}
+
 export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) => {
   const [programId] = slugIdentifier
 
@@ -163,6 +189,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
       return item
     })
     setProjectBudgets(newBudgetNeeds)
+    notifyRFSelectionMismatch(newBudgetNeeds)
   }
 
   const handleBudgetChange = (activityId: string, budgetId: string, isChecked: boolean) => {
@@ -188,6 +215,7 @@ export const BudgetNeedsList = ({ slugIdentifier, approval }: BudgetNeedProps) =
       return item
     })
     setProjectBudgets(newBudgetNeeds)
+    notifyRFSelectionMismatch(newBudgetNeeds)
   }
 
   const updateDataSample = useCallback((dataSample: ProjectBudgetsImproved[]): ProjectBudgetsImproved[] => {
