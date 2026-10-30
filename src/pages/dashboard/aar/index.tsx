@@ -166,6 +166,9 @@ const AARIndex = ({ canAccessAar }: { canAccessAar: boolean }) => {
                 <div
                   key={card.label}
                   className="sim-modern-panel rounded-2xl border border-[#e9edf3] bg-white p-5 shadow-sm"
+                  // Project List CSS also targets the final direct child of this grid.
+                  // Keep identical padding for Total AAR, In Progress, and Submitted.
+                  style={{ padding: '20px', borderTopColor: '#e9edf3' }}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{card.label}</p>
                   <div className="mt-3 flex items-center gap-3">
