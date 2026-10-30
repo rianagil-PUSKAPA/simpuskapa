@@ -1136,7 +1136,17 @@ export const TravelExpensesDetail = ({
           },
         ]}
       >
-        <div className="sim-modern-forms sim-modern-forms-payment">
+        <div
+          className="sim-modern-forms sim-modern-forms-payment"
+          data-sim-print-ready={
+            teDetail.finance_checking_process_status === PRFinanceCheckingStatus.CHECKED &&
+            teDetail.program_manager_approval === PRApprovalStatus.APPROVED &&
+            Boolean(teDetail.processed_by) &&
+            Boolean(teDetail.paid_at)
+              ? 'true'
+              : 'false'
+          }
+        >
           <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-gray-900">Travel Expenses</h1>
