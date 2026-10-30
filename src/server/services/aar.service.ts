@@ -73,14 +73,16 @@ export class AarService {
     this.editable(report, user)
     const answers = this.parseAnswers(body)
     // The PDF includes the current attachment metadata, stored separately.
-    return this.db.aar_reports.update({
-      where: { id },
+    const result = await this.db.aar_reports.updateMany({
+      where: { id, status: 'draft' },
       data: {
         answers: answers as Prisma.InputJsonValue,
         progress: aarProgress(answers),
         ...this.metadata(answers),
       },
     })
+    if (!result.count) throw new BadRequestException('AAR sudah disubmit dan tidak dapat diubah')
+    return this.fetchOne(id)
   }
   private filePath(id: string): string {
     return path.join(process.cwd(), 'storage', 'aar', id)
@@ -101,10 +103,11 @@ export class AarService {
     fs.writeFileSync(this.filePath(fileId), file.buffer, { flag: 'wx', mode: 0o600 })
     const attachment = { id: fileId, name: safeName, size: file.size, mime }
     try {
-      await this.db.aar_reports.update({
-        where: { id },
+      const updated = await this.db.aar_reports.updateMany({
+        where: { id, status: 'draft' },
         data: { attachments: [...attachments, attachment] as unknown as Prisma.InputJsonValue },
       })
+      if (!updated.count) throw new BadRequestException('AAR sudah disubmit dan tidak menerima lampiran baru')
     } catch (err) {
       fs.rmSync(this.filePath(fileId), { force: true })
       throw err
@@ -117,7 +120,11 @@ export class AarService {
     const files = (Array.isArray(report.attachments) ? report.attachments : []) as AarAttachment[]
     const remaining = files.filter((a) => a.id !== fileId)
     if (remaining.length === files.length) throw new NotFoundException('Lampiran tidak ditemukan')
-    await this.db.aar_reports.update({ where: { id }, data: { attachments: remaining as unknown as Prisma.InputJsonValue } })
+    const updated = await this.db.aar_reports.updateMany({
+      where: { id, status: 'draft' },
+      data: { attachments: remaining as unknown as Prisma.InputJsonValue },
+    })
+    if (!updated.count) throw new BadRequestException('AAR sudah disubmit dan lampiran tidak dapat dihapus')
     fs.rmSync(this.filePath(fileId), { force: true })
     return remaining
   }
