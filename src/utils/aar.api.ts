@@ -28,7 +28,7 @@ const api = axios.create({ baseURL: String(MAIN_URL_BE || '').replace(/\/$/, '')
 api.interceptors.request.use((config) => {
   const token = getCookie('auth_token')
   if (token) {
-    config.headers = { ...config.headers, Authorization: 'Bearer ' + token }
+    config.headers.set('Authorization', 'Bearer ' + token)
   }
   return config
 })
