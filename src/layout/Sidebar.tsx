@@ -293,6 +293,18 @@ export const Sidebar = ({ activeSidebar }: Props) => {
                     <LayersThree02Icon className="h-4 w-4 stroke-gray-500" /> Project List
                   </span>
                 </div>
+                <Link
+                  href="/dashboard/aar"
+                  onClick={() => handleInternal(false)}
+                  className={cn(
+                    'cursor-pointer whitespace-nowrap rounded-md px-3.5 py-2.5 font-semibold text-gray-500 duration-300 hover:bg-gray-50 hover:text-gray-700',
+                    activeSidebar === 'After Activity Report' && 'sim-modern-nav-active bg-primary-50 text-primary-700',
+                  )}
+                >
+                  <span className="sim-modern-nav-inner">
+                    <File04Icon className="h-4 w-4 stroke-gray-500" /> After Activity Report
+                  </span>
+                </Link>
               </div>
             </li>
             {checkIsItemExist(userLoggedinInformation?.role, [
