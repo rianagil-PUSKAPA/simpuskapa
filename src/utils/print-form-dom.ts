@@ -499,6 +499,10 @@ export function printCurrentForm() {
   if (typeof document === 'undefined') return
   const root = document.querySelector(FORM_SELECTOR) as HTMLElement | null
   if (!root) return
+  if (!finished(root)) {
+    window.alert('Print Form is available only after all required form processes are completed.')
+    return
+  }
   const number = formNumber(root)
   if (!number) {
     window.alert('Cannot print: the form number was not found. Please open the form detail page.')
@@ -560,11 +564,9 @@ function getRoot() {
 }
 
 function finished(root: HTMLElement): boolean {
-  const text = norm(root.innerText).toLowerCase()
-  if (root.classList.contains('sim-modern-forms-rf')) {
-    return /\bapproved\b/.test(text) && !/\bpending approval\b/.test(text)
-  }
-  return /\bdone process\b|\bdone all process\b/.test(text)
+  // Read completion from typed form data supplied by the React detail component.
+  // Never infer eligibility from unrelated 'Approved' or 'Done Check' labels.
+  return root.getAttribute('data-sim-print-ready') === 'true'
 }
 
 function attachButton() {
@@ -581,7 +583,7 @@ function attachButton() {
     btn.type = 'button'
     btn.setAttribute(PRINT_BUTTON_ATTR, 'true')
     btn.textContent = 'Print Form'
-    btn.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border:1px solid #f47712;background:#f47712;color:white;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer'
+    btn.style.cssText = 'display:none;align-items:center;justify-content:center;padding:10px 16px;border:1px solid #f47712;background:#f47712;color:white;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer'
     btn.addEventListener('click', (event) => {
       event.preventDefault()
       printCurrentForm()
@@ -589,7 +591,8 @@ function attachButton() {
     parent.insertBefore(btn, log)
   }
   const visible = finished(root)
-  if (btn.hidden === visible) btn.hidden = !visible
+  const display = visible ? 'inline-flex' : 'none'
+  if (btn.style.display !== display) btn.style.display = display
 }
 
 function initialize() {
