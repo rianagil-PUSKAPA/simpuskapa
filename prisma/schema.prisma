@@ -515,3 +515,28 @@ model annual_timeoff_reset_history {
   captured   Json?
   reseted_by String    @db.VarChar(55)
 }
+
+// After Activity Report: draft and submitted reports, separate from project finance approval.
+model aar_reports {
+  id              String    @id @default(uuid()) @db.VarChar(55)
+  created_by      String    @db.VarChar(55)
+  activity_code   String?   @db.VarChar(100)
+  activity_name   String?   @db.VarChar(255)
+  organizer       String?   @db.VarChar(255)
+  author          String?   @db.VarChar(255)
+  category        String?   @db.VarChar(255)
+  start_date      DateTime?
+  answers         Json
+  attachments     Json?
+  progress        Int       @default(0)
+  status          String    @default("draft") @db.VarChar(20)
+  email_status    String    @default("not_sent") @db.VarChar(20)
+  email_error     String?   @db.Text
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  submitted_at    DateTime?
+
+  @@index([created_by, status])
+  @@index([created_at])
+}
+
