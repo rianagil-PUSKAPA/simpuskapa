@@ -113,7 +113,21 @@ function workflowHtml(root: HTMLElement): string {
   ).join('') + '</div>'
 }
 
-type PrintBudgetTable = { headings: string[]; rows: string[][]; label?: string }
+type PrintFormKind = 'RF' | 'PR' | 'APR' | 'APS' | 'APF' | 'TE'
+type PrintBudgetTable = {
+  headings: string[]
+  rows: string[][]
+  label?: string
+  vendorCategory?: string
+  requestedFromTR?: string
+}
+
+function printKind(number: string): PrintFormKind {
+  const prefix = number.split('/')[0].toUpperCase()
+  if (prefix.startsWith('RF-')) return 'RF'
+  if (['PR', 'APR', 'APS', 'APF', 'TE'].includes(prefix)) return prefix as PrintFormKind
+  return 'PR'
+}
 
 function visibleElement(element: Element): boolean {
   const node = element as HTMLElement
@@ -125,84 +139,128 @@ function printableCell(element: Element): string {
   return textOf(element)
 }
 
-function compactTable(headings: string[], rows: string[][], label?: string): PrintBudgetTable | null {
-  const columns = [
-    /^(no|code|budget code|item number)$/i,
-    /description|budget item/i,
-    /^vendor category$/i,
-    /^(qty|quantity)$/i,
-    /^unit$/i,
-    /^(total payment request|total payment|total request|total amount|total cost|total)$/i,
-  ]
-  let selected = columns.map((pattern) => headings.findIndex((header) => pattern.test(norm(header))))
-    .filter((index) => index >= 0)
-  if (!selected.some((i) => /^(total payment request|total payment|total request|total amount|total cost|total)$/i.test(headings[i]))) {
-    const unitCost = headings.findIndex((h) => /^(unit cost|amount)$/i.test(norm(h)))
-    if (unitCost >= 0) selected.push(unitCost)
-  }
-  selected = selected.filter((value, index) => selected.indexOf(value) === index)
-  if (selected.length < 2) {
-    selected = headings.map((header, i) => header.trim() ? i : -1).filter((i) => i >= 0).slice(0, 6)
-  }
-  if (selected.length < 2) return null
-  const outputRows = rows.map((cells) => selected.map((index) => cells[index] || '—'))
-    .filter((row) => row.some((cell) => cell !== '—' && !!cell.trim()))
-  if (!outputRows.length) return null
-  return {
-    headings: selected.map((index) => headings[index] || 'Item'),
-    rows: outputRows,
-    label,
-  }
+function budgetColumns(kind: PrintFormKind): Array<{ name: string; pattern: RegExp }> {
+  const no = { name: 'No', pattern: /^(no|code|budget code|item number)$/i }
+  const description = { name: 'Description', pattern: /^description$|budget item/i }
+  const vendorType = { name: 'Vendor Type', pattern: /^vendor type$/i }
+  const vendorCategory = { name: 'Vendor Category', pattern: /^vendor category$/i }
+  const qty = { name: 'Qty', pattern: /^(qty|quantity)$/i }
+  const packageQty = { name: 'Pckg Qty', pattern: /^(pckg qty|pkg qty|package qty)$/i }
+  const unitCost = { name: 'Unit Cost', pattern: /^unit cost$/i }
+  const rfTotal = { name: 'Total RF', pattern: /^total requested \(rf\)$|^total rf$|^total request$/i }
+  const prTotal = { name: 'Total PR', pattern: /^total payment request$|^total payment requested$|^total pr$/i }
+  const paymentTotal = { name: 'Total Payment', pattern: /^total payment request$|^total payment requested$|^total payment$/i }
+  const advance = { name: 'Advance Payment', pattern: /^advance payment$/i }
+  const expenses = { name: 'Expenses', pattern: /^expenses$|^total expenses$/i }
+  if (kind === 'RF') return [no, description, vendorType, qty, packageQty, unitCost, rfTotal]
+  if (kind === 'PR') return [no, description, vendorType, qty, packageQty, unitCost, prTotal]
+  if (kind === 'APR') return [no, description, vendorCategory, qty, packageQty, unitCost, paymentTotal, advance]
+  if (kind === 'TE') return [no, description, qty, packageQty, unitCost, expenses]
+  return [no, description, vendorCategory, qty, packageQty, unitCost, paymentTotal, advance]
 }
 
-/* SIM PUSKAPA's RF/PR/APR details use div.table-selection instead of HTML tables.
-   Read each rendered column from direct row children; never scroll/copy the dashboard. */
-function collectTables(root: HTMLElement): PrintBudgetTable[] {
+function compactTable(
+  headings: string[],
+  rows: string[][],
+  kind: PrintFormKind,
+  label?: string,
+  vendorTypes: string[] = [],
+): PrintBudgetTable | null {
+  const normalized = headings.map(norm)
+  const specs = budgetColumns(kind)
+  const indices = specs.map((spec) => normalized.findIndex((h) => spec.pattern.test(h)))
+  const descriptionIndex = indices[1]
+  if (descriptionIndex < 0 || !rows.length) return null
+
+  const mapped = rows.map((cells, rowIndex) => specs.map((spec, column) => {
+    const index = indices[column]
+    if (kind === 'PR' && spec.name === 'Vendor Type' && index < 0) {
+      return vendorTypes[rowIndex] || '—'
+    }
+    return index >= 0 ? norm(cells[index]) || '—' : '—'
+  })).filter((cells) => cells[1] !== '—')
+
+  if (!mapped.length) return null
+  return { headings: specs.map((spec) => spec.name), rows: mapped, label }
+}
+
+function findTravelBudgetMeta(selection: Element): { vendorCategory?: string; requestedFromTR?: string } {
+  let ancestor = selection.parentElement
+  for (let level = 0; ancestor && level < 8; level += 1) {
+    const labels = Array.from(ancestor.querySelectorAll('p'))
+      .filter((node) => textOf(node) === 'Vendor Category')
+    const hasRequested = Array.from(ancestor.querySelectorAll('p'))
+      .some((node) => textOf(node) === 'Total Requested (from TR)')
+    if (labels.length === 1 && hasRequested) {
+      const category = findValue(ancestor, ['Vendor Category'])
+      const requested = findValue(ancestor, ['Total Requested (from TR)'])
+      return { vendorCategory: category || '—', requestedFromTR: requested || '—' }
+    }
+    ancestor = ancestor.parentElement
+  }
+  return {}
+}
+
+/* Rendered RF/PR/TE tables are div-based; each row's columns are mapped by heading.
+   Unlike the old generic extractor, this never substitutes Unit Cost for Expenses. */
+function collectTables(root: HTMLElement, kind: PrintFormKind): PrintBudgetTable[] {
   const collected: PrintBudgetTable[] = []
   const selections = Array.from(root.querySelectorAll('.table-container .table-selection'))
   for (const selection of selections) {
     if (!visibleElement(selection) || selection.children.length < 2) continue
-    const headingRow = selection.children[0]?.firstElementChild
-    const rowContainer = selection.children[1]
-    if (!headingRow || !rowContainer) continue
+    const header = selection.children[0]?.firstElementChild
+    const body = selection.children[1]
+    if (!header || !body) continue
+    const headings = Array.from(header.children).map(printableCell)
+    if (!headings.some((heading) => /description/i.test(heading))) continue
 
-    const headings = Array.from(headingRow.children).map(printableCell)
-    if (!headings.some((text) => /description|vendor category|qty|total/i.test(text))) continue
-    const data = Array.from(rowContainer.children)
+    const rowElements = Array.from(body.children)
       .filter((element) => element.matches('div') && visibleElement(element))
-      .map((row) => Array.from(row.children).map(printableCell))
-    const sectionHeader = selection.closest('.table-container')?.previousElementSibling
-    const sectionCode = textOf(sectionHeader?.querySelector('span') || null)
-    const sectionName = textOf(sectionHeader?.querySelector('p') || null)
+    const rows = rowElements.map((row) => Array.from(row.children).map(printableCell))
+    const vendorTypes = rowElements.map((row) => row.getAttribute('data-print-vendor-type') || '')
+    const section = selection.closest('.table-container')?.previousElementSibling
+    const sectionCode = textOf(section?.querySelector('span') || null)
+    const sectionName = textOf(section?.querySelector('p') || null)
     const label = [sectionCode, sectionName].filter(Boolean).join(' — ')
-    const group = compactTable(headings, data, label || undefined)
-    if (group) collected.push(group)
-  }
 
-  // Fallback for form types that render native table markup.
+    const group = compactTable(headings, rows, kind, label || undefined, vendorTypes)
+    if (group) {
+      if (kind === 'TE') Object.assign(group, findTravelBudgetMeta(selection))
+      collected.push(group)
+    }
+  }
   for (const table of Array.from(root.querySelectorAll('table'))) {
     if (!visibleElement(table) || table.closest('.table-selection')) continue
     const headings = Array.from(table.querySelectorAll('thead th')).map(printableCell)
-    if (!headings.some((text) => /description|vendor category|qty|total/i.test(text))) continue
+    if (!headings.some((h) => /description/i.test(h))) continue
     const rows = Array.from(table.querySelectorAll('tbody tr'))
       .filter(visibleElement)
       .map((row) => Array.from(row.querySelectorAll('td')).map(printableCell))
-    const group = compactTable(headings, rows)
+    const group = compactTable(headings, rows, kind)
     if (group) collected.push(group)
   }
   return collected
 }
 
-function tableHtml(root: HTMLElement): string {
-  const tables = collectTables(root)
-  if (!tables.length) return '<p class="empty">No budget item table is visible on this form.</p>'
-  return tables.map((table, n) =>
-    '<div class="table-group">' + (table.label || tables.length > 1 ? '<div class="table-label">' + safe(table.label || 'Budget group ' + (n + 1)) + '</div>' : '') +
-    '<table><thead><tr>' + table.headings.map((h) => '<th>' + safe(h) + '</th>').join('') +
-    '</tr></thead><tbody>' + table.rows.map((row) =>
-      '<tr>' + row.map((v) => '<td>' + safe(v) + '</td>').join('') + '</tr>'
-    ).join('') + '</tbody></table></div>'
-  ).join('')
+function tableHtml(root: HTMLElement, kind: PrintFormKind): string {
+  const groups = collectTables(root, kind)
+  if (!groups.length) return '<p class="empty">No budget item rows were found.</p>'
+  return groups.map((group, index) => {
+    const heading = group.label || (groups.length > 1 ? 'Budget group ' + (index + 1) : '')
+    const meta = kind === 'TE'
+      ? '<div class="table-meta"><div><span>Vendor Category</span><strong>' +
+        safe(group.vendorCategory || '—') + '</strong></div><div><span>Total Requested (from TR)</span><strong>' +
+        safe(group.requestedFromTR || '—') + '</strong></div></div>'
+      : ''
+    return '<div class="table-group">' +
+      (heading ? '<div class="table-label">' + safe(heading) + '</div>' : '') +
+      meta + '<table><thead><tr>' +
+      group.headings.map((name) => '<th>' + safe(name) + '</th>').join('') +
+      '</tr></thead><tbody>' +
+      group.rows.map((cells) => '<tr>' +
+        cells.map((value) => '<td>' + safe(value) + '</td>').join('') + '</tr>').join('') +
+      '</tbody></table></div>'
+  }).join('')
 }
 
 function fieldHtml(label: string, value: string): string {
@@ -233,29 +291,72 @@ function documentHtml(root: HTMLElement): string {
 }
 
 function buildDocument(root: HTMLElement, number: string, title: string): string {
-  const isRF = root.classList.contains('sim-modern-forms-rf')
+  const kind = printKind(number)
+  const isRF = kind === 'RF'
   const logo = window.location.origin + LOGO_PATH
   const code = safe(number)
-  const sections = [
+
+  const dateNames: string[] = kind === 'TE'
+    ? ['Estimated Payment Date', 'Payment Date']
+    : kind === 'APR'
+      ? ['Advance Payment Date', 'Payment Date']
+      : kind === 'APF'
+        ? ['Advance Perdiem Fee Date', 'Payment Date']
+        : ['Payment Date', 'Request Date', 'Advance Payment Date']
+
+  const base = [
     fieldHtml('Project', pick(root, ['Project'])),
     fieldHtml('Partner', pick(root, ['Partner'])),
     fieldHtml('Activity Name', pick(root, ['Activity Name', 'Activity'])),
-    fieldHtml('Payment / Request Date', pick(root, ['Payment Date', 'Request Date', 'Advance Payment Date'])),
+    fieldHtml(kind === 'TE' ? 'Estimated Payment Date' : 'Payment / Request Date', pick(root, dateNames)),
     fieldHtml(isRF ? 'Requisition Number' : 'Finance Number', number),
-    fieldHtml('Vendor Type', pick(root, ['Vendor Type'])),
-    fieldHtml('Vendor Category', pick(root, ['Vendor Category'])),
-    fieldHtml('Vendor', pick(root, ['Vendor'])),
-  ].join('')
+  ]
+  if (kind === 'RF') {
+    base.push(fieldHtml('Deadline', pick(root, ['Deadline'])))
+  } else if (kind === 'TE') {
+    base.push(fieldHtml('Travel Date End', pick(root, ['Travel Date End'])))
+    base.push(fieldHtml('Travel Expenses State', pick(root, ['Travel Expenses State'])))
+    base.push(fieldHtml('Advance Perdiem Fee', pick(root, ['Advance Perdiem Fee'])))
+  } else {
+    for (const label of ['Vendor Type', 'Vendor Category', 'Vendor']) {
+      const value = findValue(root, [label])
+      if (value) base.push(fieldHtml(label, value))
+    }
+  }
+  const sections = base.join('')
+
   const transfer = findValue(root, ['Transfer Amount'])
-  const total = findValue(root, ['Total Payment Requested', 'Total Request', 'Total Amount'])
+  const total = findValue(root, ['Total Payment Requested', 'Total Request', 'Total Amount', 'Total Payment Used/Requested'])
   const tax = findValue(root, ['Pajak', 'Tax'])
-  const amounts = (isRF
-    ? [{ label: 'Total Request', value: total || transfer || '—', main: true }]
-    : [
-        { label: 'Transfer Amount', value: transfer || '—', main: true },
-        { label: 'Total', value: total || '—', main: false },
-        { label: 'Tax', value: tax || '—', main: false },
-      ]).map((item) =>
+  type Amount = { label: string; value: string; main: boolean }
+  let fields: Amount[]
+
+  if (kind === 'RF') {
+    fields = [{ label: 'Total Amount', value: findValue(root, ['Total Request', 'Total Requested', 'Total Amount']) || '—', main: true }]
+  } else if (kind === 'PR') {
+    fields = [
+      { label: 'Total Payment', value: transfer || '—', main: true },
+      { label: 'Total', value: total || '—', main: false },
+      { label: 'Tax', value: tax || '—', main: false },
+    ]
+  } else if (kind === 'APR') {
+    fields = [{ label: 'Total Advance', value: transfer || findValue(root, ['Total Advance Payment']) || '—', main: true }]
+  } else if (kind === 'TE') {
+    fields = [
+      { label: 'Total Travel Expenses', value: findValue(root, ['Total Travel Expenses']) || '—', main: true },
+      { label: 'Perdiem', value: findValue(root, ['Perdiem']) || '—', main: false },
+      { label: 'Transport', value: findValue(root, ['Transport']) || '—', main: false },
+      { label: 'Others', value: findValue(root, ['Others']) || '—', main: false },
+      { label: 'Tax', value: tax || '—', main: false },
+    ]
+  } else {
+    fields = [
+      { label: 'Total Amount', value: transfer || findValue(root, ['Total Advance Payment', 'Total Advance Perdiem Fee']) || '—', main: true },
+      { label: 'Total', value: total || '—', main: false },
+      { label: 'Tax', value: tax || '—', main: false },
+    ]
+  }
+  const amounts = fields.map((item) =>
     '<div class="amount"><div class="label">' + safe(item.label) +
     '</div><div class="' + (item.main ? 'big-value' : 'small-value') + '">' +
     safe(item.value) + '</div></div>'
@@ -291,6 +392,13 @@ text-transform:uppercase; margin:0 0 9px }
 border-radius:8px; overflow:hidden; background:#fff }
 .amount{ padding:12px 12px }
 .amount + .amount{ border-left:1px solid #e3e9f0 }
+.amounts.te{ grid-template-columns:1.4fr repeat(4,minmax(0,1fr)) }
+.amounts.te .big-value{ font-size:14px }
+.amounts.te .small-value{ font-size:10px }
+.table-meta{ display:flex; gap:20px; padding:8px 9px; margin:5px 0 8px; border:1px solid #e8ecf2; border-radius:5px; background:#fafbfc }
+.table-meta > div{ flex:1; min-width:0; overflow-wrap:anywhere }
+.table-meta span{ display:block; color:#7b8aa0; font-size:8px }
+.table-meta strong{ display:block; margin-top:3px; color:#23334a; font-size:9px }
 .big-value{ font-size:17px; font-weight:800; color:#162b47; white-space:normal }
 .small-value{ font-size:11.5px; font-weight:700; color:#3f5069; white-space:normal }
 .approval{ display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:8px }
@@ -334,9 +442,9 @@ box-shadow:0 7px 34px #d6dae0 } }
 <div class="main-heading"><h1 class="main-title">${safe(title)}</h1>
 <p class="subtitle">Official form summary · Supporting documents are referenced separately</p></div>
 <section class="section"><h2>Request Information</h2><div class="info-grid">${sections}</div></section>
-<section class="section"><h2>Amount Summary</h2><div class="amounts">${amounts}</div></section>
+<section class="section"><h2>Amount Summary</h2><div class="amounts${kind === 'TE' ? ' te' : ''}">${amounts}</div></section>
 <section class="section"><h2>Approval &amp; Process</h2>${workflowHtml(root)}</section>
-<section class="section budget-section"><h2>Budget Items</h2>${tableHtml(root)}</section>
+<section class="section budget-section"><h2>Budget Items</h2>${tableHtml(root, kind)}</section>
 <div class="bottom"><section class="section"><h2>Supporting Documents</h2>${documentHtml(root)}</section>
 <div class="initial"><div class="initial-header">Initial / Reviewed by</div>
 <div class="initial-body">Name / initials: __________________</div></div></div>
@@ -353,7 +461,7 @@ export function printCurrentForm() {
     window.alert('Cannot print: the form number was not found. Please open the form detail page.')
     return
   }
-  if (root.querySelector('.table-container') && collectTables(root).length === 0) {
+  if (root.querySelector('.table-container') && collectTables(root, printKind(number)).length === 0) {
     window.alert('Budget item rows are not ready to print. Please refresh the form and try again.')
     return
   }
