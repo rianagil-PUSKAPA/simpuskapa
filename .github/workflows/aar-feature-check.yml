@@ -24,5 +24,7 @@ jobs:
         run: pnpm exec prisma generate
       - name: Typecheck all frontend and backend sources
         run: pnpm exec tsc --noEmit --pretty false
+      - name: AAR PDF and progress unit tests
+        run: pnpm exec jest --runInBand --runTestsByPath src/server/common/aar.pdf.spec.ts
       - name: Nest backend compile
         run: pnpm exec nest build --path ./tsconfig.server.json
