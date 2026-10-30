@@ -1943,7 +1943,11 @@ export const PaymentRequestDetail = ({
                               </div>
                               <div className="divide-y divide-gray-200 text-sm">
                                 {activity.budgets?.map((budget, budgetIndex) => (
-                                  <div className="flex items-center" key={budget.code}>
+                                  <div
+                                    className="flex items-center"
+                                    key={budget.code}
+                                    data-print-vendor-type={budget.vendor_category_information.vendor_type.name}
+                                  >
                                     <div className="w-32 p-4 pl-6">{budget.code.replace(/\.(\d+)$/, '-$1')}</div>
                                     <div className="w-52 p-4">{budget.description}</div>
                                     <div className="w-48 p-4 capitalize">{budget.vendor_category_information.name}</div>
