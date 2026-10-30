@@ -45,6 +45,8 @@ import { CommonRedisClient } from './common/memached.client'
 import { NotificationRepository } from './repositories/notification.repository'
 import { MailRepository } from './repositories/mail.repository'
 import { MailTransporter } from './commands/mail.transporter'
+import { AarController } from './controllers/aar.controller'
+import { AarService } from './services/aar.service'
 
 @Module({
   imports: [],
@@ -61,6 +63,7 @@ import { MailTransporter } from './commands/mail.transporter'
     ProjectController,
     RFController,
     PRController,
+    AarController,
   ],
   providers: [
     UserRepository,
@@ -94,6 +97,7 @@ import { MailTransporter } from './commands/mail.transporter'
     PRServiceService,
     PRRepository,
     MailRepository,
+    AarService,
   ],
 })
 export class AppModule implements NestModule {
@@ -123,6 +127,7 @@ export class AppModule implements NestModule {
         PartnerController,
         MetadataController,
         FileController,
+        AarController,
       )
   }
 }
