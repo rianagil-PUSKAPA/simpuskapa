@@ -120,6 +120,7 @@ type PrintBudgetTable = {
   label?: string
   vendorCategory?: string
   requestedFromTR?: string
+  activityLabel?: string
 }
 
 function printKind(number: string): PrintFormKind {
@@ -184,6 +185,38 @@ function compactTable(
   return { headings: specs.map((spec) => spec.name), rows: mapped, label }
 }
 
+/* TE summary's Advance Perdiem Fee renders either an APF link or a bare '-' text
+   node. Only read siblings of the field label; never climb into the date column. */
+function readTEAdvancePerdiem(root: HTMLElement): string {
+  const label = Array.from(root.querySelectorAll('p'))
+    .find((node) =>
+      norm(node.textContent).toLowerCase() === 'advance perdiem fee' &&
+      !node.closest('.activity-category'),
+    )
+  if (!label || !label.parentElement) return '-'
+  const siblings = Array.from(label.parentElement.childNodes)
+  const index = siblings.indexOf(label)
+  if (index < 0) return '-'
+  const value = norm(
+    siblings.slice(index + 1)
+      .map((node) => node.nodeType === 1 ? textOf(node as Element) : norm(node.textContent))
+      .filter(Boolean)
+      .join(' '),
+  )
+  if (!value || /^[-—–]$/.test(value) ||
+      /travel date end|estimated payment date/i.test(value)) return '-'
+  return value
+}
+
+function readTEActivityLabel(selection: Element): string {
+  const activity = selection.closest('.activity-category')
+  const header = activity?.firstElementChild
+  if (!header) return '—'
+  const code = textOf(header.querySelector('span'))
+  const description = textOf(header.querySelector('p'))
+  return [code, description].filter(Boolean).join(' — ') || '—'
+}
+
 function findTravelBudgetMeta(selection: Element): { vendorCategory?: string; requestedFromTR?: string } {
   let ancestor = selection.parentElement
   for (let level = 0; ancestor && level < 8; level += 1) {
@@ -225,7 +258,10 @@ function collectTables(root: HTMLElement, kind: PrintFormKind): PrintBudgetTable
 
     const group = compactTable(headings, rows, kind, label || undefined, vendorTypes)
     if (group) {
-      if (kind === 'TE') Object.assign(group, findTravelBudgetMeta(selection))
+      if (kind === 'TE') {
+        Object.assign(group, findTravelBudgetMeta(selection))
+        group.activityLabel = readTEActivityLabel(selection)
+      }
       collected.push(group)
     }
   }
@@ -247,14 +283,18 @@ function tableHtml(root: HTMLElement, kind: PrintFormKind): string {
   if (!groups.length) return '<p class="empty">No budget item rows were found.</p>'
   return groups.map((group, index) => {
     const heading = group.label || (groups.length > 1 ? 'Budget group ' + (index + 1) : '')
+    const activity = kind === 'TE'
+      ? '<div class="table-activity"><span>Activity</span><strong>' +
+        safe(group.activityLabel || '—') + '</strong></div>'
+      : ''
     const meta = kind === 'TE'
       ? '<div class="table-meta"><div><span>Vendor Category</span><strong>' +
         safe(group.vendorCategory || '—') + '</strong></div><div><span>Total Requested (from TR)</span><strong>' +
         safe(group.requestedFromTR || '—') + '</strong></div></div>'
       : ''
     return '<div class="table-group">' +
-      (heading ? '<div class="table-label">' + safe(heading) + '</div>' : '') +
-      meta + '<table><thead><tr>' +
+      (kind !== 'TE' && heading ? '<div class="table-label">' + safe(heading) + '</div>' : '') +
+      activity + meta + '<table><thead><tr>' +
       group.headings.map((name) => '<th>' + safe(name) + '</th>').join('') +
       '</tr></thead><tbody>' +
       group.rows.map((cells) => '<tr>' +
@@ -316,7 +356,7 @@ function buildDocument(root: HTMLElement, number: string, title: string): string
   } else if (kind === 'TE') {
     base.push(fieldHtml('Travel Date End', pick(root, ['Travel Date End'])))
     base.push(fieldHtml('Travel Expenses State', pick(root, ['Travel Expenses State'])))
-    base.push(fieldHtml('Advance Perdiem Fee', pick(root, ['Advance Perdiem Fee'])))
+    base.push(fieldHtml('Advance Perdiem Fee', readTEAdvancePerdiem(root)))
   } else {
     for (const label of ['Vendor Type', 'Vendor Category', 'Vendor']) {
       const value = findValue(root, [label])
@@ -399,6 +439,9 @@ border-radius:8px; overflow:hidden; background:#fff }
 .table-meta > div{ flex:1; min-width:0; overflow-wrap:anywhere }
 .table-meta span{ display:block; color:#7b8aa0; font-size:8px }
 .table-meta strong{ display:block; margin-top:3px; color:#23334a; font-size:9px }
+.table-activity{ margin:0 0 8px; padding:8px 10px; border:1px solid #e8ecf2; border-radius:6px; background:#fff7ef }
+.table-activity span{ display:block; color:#7b8aa0; font-size:8px }
+.table-activity strong{ display:block; margin-top:3px; color:#23334a; font-size:10px; font-weight:700 }
 .big-value{ font-size:17px; font-weight:800; color:#162b47; white-space:normal }
 .small-value{ font-size:11.5px; font-weight:700; color:#3f5069; white-space:normal }
 .approval{ display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:8px }
