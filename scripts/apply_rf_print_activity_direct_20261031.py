@@ -112,7 +112,7 @@ function rfActivityName(root: HTMLElement): string {
     ]
     proper = "    fieldHtml('Activity Name', isRF ? rfActivityName(root) : pick(root, ['Activity Name', 'Activity'])),"
     dedicated_field = re.findall(
-        r"fieldHtml\\(\\s*['\\\"]Activity Name['\\\"]\\s*,\\s*isRF\\s*\\?\\s*rfActivityName\\(root\\)",
+        r"fieldHtml\(\s*['\"]Activity Name['\"]\s*,\s*isRF\s*\?\s*rfActivityName\(root\)",
         util,
     )
     if len(dedicated_field) == 1:
@@ -157,7 +157,7 @@ function rfActivityName(root: HTMLElement): string {
         if marker not in util:
             abort(f"Missing Print Form marker: {marker}")
     if len(re.findall(
-        r"fieldHtml\\(\\s*['\\\"]Activity Name['\\\"]\\s*,\\s*isRF\\s*\\?\\s*rfActivityName\\(root\\)",
+        r"fieldHtml\(\s*['\"]Activity Name['\"]\s*,\s*isRF\s*\?\s*rfActivityName\(root\)",
         util,
     )) != 1:
         abort("RF printed Activity Name expression not installed")
