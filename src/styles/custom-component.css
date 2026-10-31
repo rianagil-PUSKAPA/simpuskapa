@@ -1,0 +1,248 @@
+/* Custom external component */
+.react-datepicker-popper {
+  @apply !z-20;
+}
+.react-datepicker__time-container {
+  @apply !w-32;
+}
+.react-datepicker__time-box {
+  @apply !w-32;
+}
+.react-datepicker {
+  @apply !rounded-lg !border !border-gray-100 !shadow-xl;
+}
+.react-datepicker__header {
+  @apply !border-b !border-b-gray-200 !bg-gray-100 !py-3;
+}
+.react-datepicker__current-month {
+  @apply !mb-1;
+}
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  @apply !text-sm !font-semibold !text-gray-700;
+}
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  @apply !m-0.5 !inline-flex !h-10 !w-10 !items-center !justify-center !rounded-full !text-sm;
+}
+.react-datepicker__day--outside-month {
+  @apply !text-gray-300;
+}
+.react-datepicker__day:not(.react-datepicker__day--in-range):not(.react-datepicker__day--weekend):hover,
+.react-datepicker__month-text:not(.react-datepicker__day--in-range):not(.react-datepicker__day--weekend):hover,
+.react-datepicker__quarter-text:not(.react-datepicker__day--in-range):not(.react-datepicker__day--weekend):hover,
+.react-datepicker__year-text:not(.react-datepicker__day--in-range):not(.react-datepicker__day--weekend):hover {
+  @apply !bg-primary-600 !text-white;
+}
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__month-text--keyboard-selected,
+.react-datepicker__quarter-text--keyboard-selected,
+.react-datepicker__year-text--keyboard-selected {
+  @apply !bg-primary-100 !text-white;
+}
+.react-datepicker__day--selected,
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--in-range,
+.react-datepicker__quarter-text--selected,
+.react-datepicker__quarter-text--in-range,
+.react-datepicker__year-text--selected,
+.react-datepicker__year-text--in-range {
+  @apply !bg-primary-600 !text-white;
+}
+
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end {
+  @apply relative;
+}
+
+.react-datepicker__day--in-range,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__month-text--in-selecting-range,
+.react-datepicker__quarter-text--in-selecting-range,
+.react-datepicker__year-text--in-selecting-range {
+  @apply relative !bg-gray-50 !text-gray-700;
+}
+
+.react-datepicker__day--in-range.react-datepicker__day--range-start,
+.react-datepicker__day--in-range.react-datepicker__day--range-end,
+.react-datepicker__day--in-selecting-range.react-datepicker__day--selecting-range-start,
+.react-datepicker__day--in-selecting-range.react-datepicker__day--selecting-range-end {
+  @apply !rounded-full !bg-primary-600 !text-white;
+}
+
+.react-datepicker__year-wrapper {
+  @apply !grid !max-w-[13rem] !grid-cols-3;
+}
+
+.react-datepicker__year .react-datepicker__year-text {
+  @apply !m-1 !w-auto !px-3 !py-1.5;
+}
+
+.react-datepicker__day {
+  @apply !font-medium;
+}
+.react-datepicker__close-icon::after {
+  @apply !flex !h-4 !w-4 !cursor-pointer !items-center !justify-center !rounded-full !bg-primary-500 !bg-center !bg-no-repeat !p-0 !content-[''];
+  background-image: url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M17%207L7%2017M7%207L17%2017%22%20stroke%3D%22white%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E);
+  background-size: 14px;
+}
+.react-datepicker__close-icon {
+  @apply !pr-2;
+}
+
+.react-datepicker__time-container
+  .react-datepicker__time
+  .react-datepicker__time-box
+  ul.react-datepicker__time-list
+  li.react-datepicker__time-list-item--selected {
+  @apply !bg-primary-600;
+}
+
+.react-datepicker__navigation {
+  @apply 2xl:!h-[45px];
+}
+/* Progress Circular  */
+.CircularProgressbar-text {
+  @apply fill-gray-700 font-semibold;
+}
+
+/* Toast */
+:root {
+  --toastify-icon-color-info: #ff7b00 !important;
+  --toastify-icon-color-success: #9dd926 !important;
+  --toastify-icon-color-warning: #ffbf00 !important;
+  --toastify-icon-color-error: #d92d20 !important;
+}
+.Toastify__progress-bar--info {
+  @apply !bg-primary-500;
+}
+.Toastify__progress-bar--success {
+  @apply !bg-success-500;
+}
+.Toastify__progress-bar--warning {
+  @apply !bg-warning-500;
+}
+.Toastify__progress-bar--error {
+  @apply !bg-error-500;
+}
+.Toastify__toast {
+  @apply !rounded-xl border !p-3 text-sm shadow-none;
+}
+.Toastify__toast--default {
+  @apply !border-gray-300 !bg-gray-25;
+}
+.Toastify__toast--info {
+  @apply !border-primary-300 !bg-primary-25;
+}
+.Toastify__toast--success {
+  @apply !border-success-300 !bg-success-25;
+}
+.Toastify__toast--warning {
+  @apply !border-warning-300 !bg-warning-25;
+}
+.Toastify__toast--error {
+  @apply !border-error-300 !bg-error-25;
+}
+.Toastify__close-button--light {
+  @apply !opacity-100;
+}
+
+.Toastify__toast--default .Toastify__close-button svg {
+  @apply fill-gray-500;
+}
+.Toastify__toast--info .Toastify__close-button svg {
+  @apply fill-primary-500;
+}
+.Toastify__toast--success .Toastify__close-button svg {
+  @apply fill-success-500;
+}
+.Toastify__toast--warning .Toastify__close-button svg {
+  @apply fill-warning-500;
+}
+.Toastify__toast--error .Toastify__close-button svg {
+  @apply fill-error-500;
+}
+
+.Toastify__toast--default .Toastify__toast-body {
+  @apply font-semibold text-gray-700;
+}
+.Toastify__toast--info .Toastify__toast-body {
+  @apply font-semibold text-primary-700;
+}
+.Toastify__toast--success .Toastify__toast-body {
+  @apply font-semibold text-success-700;
+}
+.Toastify__toast--warning .Toastify__toast-body {
+  @apply font-semibold text-warning-700;
+}
+.Toastify__toast--error .Toastify__toast-body {
+  @apply font-semibold text-error-700;
+}
+
+.Toastify__toast-body {
+  @apply !p-0 !pr-2;
+}
+
+.Toastify__toast-container {
+  @apply !w-fit;
+}
+
+/* Hide arrow input number */
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type='number'] {
+  appearance: textfield;
+}
+
+/* React tags input */
+.react-tagsinput {
+  @apply form-input relative w-full rounded-lg !border !border-gray-300 !px-3.5 !py-2.5 text-gray-900 shadow-xs placeholder:text-gray-500 focus:border-primary-300 focus:ring-4 focus:ring-primary-100 disabled:border-gray-300 disabled:bg-gray-50;
+}
+.react-tagsinput--focused {
+  @apply !border-primary-300 !ring-4 !ring-primary-100 focus:!border-primary-300 focus:!ring-primary-100;
+}
+.react-tagsinput--focused.disabled {
+  @apply !border-gray-300 !ring-transparent focus:!border-gray-300 focus:!ring-transparent;
+}
+.react-tagsinput.error {
+  @apply !border-error-300 focus:!border-error-300;
+}
+.react-tagsinput.disabled {
+  @apply !bg-gray-50;
+}
+.react-tagsinput.disabled::before {
+  @apply absolute inset-0 z-10 bg-transparent content-[''];
+}
+.react-tagsinput--focused.error {
+  @apply !ring-4 !ring-error-100 focus:!ring-error-100;
+}
+.react-tagsinput > span {
+  @apply flex flex-wrap items-center gap-1.5;
+}
+.react-tagsinput-tag {
+  @apply !m-0 !inline-flex !items-center !rounded-md !border !border-gray-300 !bg-white !py-0.5 !pe-3 !ps-2.5 !text-sm !font-medium !text-gray-700;
+}
+.react-tagsinput-remove {
+  @apply !relative !h-3 !w-3;
+}
+.react-tagsinput-tag a::before {
+  @apply !absolute !-right-1 !top-px !h-3 !w-3 !bg-cover !content-[''];
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M9%203L3%209M3%203L9%209%22%20stroke%3D%22%2398A2B3%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E');
+}
+.react-tagsinput-input {
+  @apply !m-0 !w-auto !grow !p-0 !text-sm !font-medium !text-gray-700;
+}
+.react-tagsinput-input:focus {
+  @apply !ring-transparent;
+}
+.swiper-slider {
+  @apply !overflow-y-visible;
+}

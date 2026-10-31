@@ -1,0 +1,65 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+*credentials*
+*secret*
+
+# Root database dumps
+/*.sql
+
+# Dependencies / build output
+node_modules/
+.next/
+dist/
+dist-server/
+dist-next/
+coverage/
+
+# Runtime / uploaded files
+storage/
+
+# Playwright authenticated session state
+playwright/*-state.json
+
+# Deployment environment files
+deployment/envs/
+
+# Local backups / temporary copies
+backup_before_*/
+.bak*
+*.before-*
+*.before_*
+*.save
+
+# Reports / generated local files
+jest-stare/
+
+# Release artifacts
+*.zip
+*.pkg
+MailHog_linux_amd64
+
+# Local patch/debug files
+/fix_*.py
+/patch_*.py
+build.log
+
+# Sensitive/local files not needed in source backup
+/auth.json
+/store.js
+/simpuskapa.pub
+
+# Accidental temporary files
+/.e
+/[]
+/{
+/hgfjdks
+
+# Deployment automation belongs to existing developer repo,
+# not this rolling source-backup repository.
+.github/workflows/
+.circleci/

@@ -1,0 +1,15 @@
+export class RoleDefinition {
+  public static readonly STAFF = 'staff'
+  public static readonly SUPERVISOR = 'supervisor'
+  public static readonly HR_TEAM = 'hr_team'
+  public static readonly ADMIN = 'admin'
+  public static readonly SUPERADMIN = 'superadmin'
+  public static readonly HEAD_OF_FINANCE = 'head_of_finance'
+  public static readonly HEAD_OF_OPERATION = 'head_of_operation'
+  public static readonly FINANCE_TEAM = 'finance_team'
+  public static readonly OPS_TEAM = 'ops_team'
+  public static readonly GRANT_MANAGER = 'grant_manager'
+  public static readonly GENERAL_MANAGER = 'general_manager'
+  public static readonly PROGRAM_MANAGER = 'program_manager'
+  public static readonly PROGRAM_OFFICER = 'program_officer'
+}
