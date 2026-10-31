@@ -497,6 +497,7 @@ const Evaluation = () => {
           { title: 'Performace Evaluation', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--people">
         <div className="flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-10 py-5 sm:flex-row sm:items-center sm:gap-2">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">Performance Evaluation</h1>
@@ -537,6 +538,7 @@ const Evaluation = () => {
             ]}
           />
         </div>
+      </div>
       </Dashboard>
 
       <form id="employee-performance-add-report" onSubmit={handleSubmit(addNewReportSubmit)}>
