@@ -973,6 +973,16 @@ export class PRServiceService {
       result.push(prx)
     }
 
+    // Vendor payment history is intentionally loaded oldest-first for tax
+    // calculations in the repository; present vendor form lists newest-first.
+    if (vendor_id) {
+      result.sort((left, right) => {
+        const latest = Date.parse(String(right.created_at || '')) || 0
+        const earliest = Date.parse(String(left.created_at || '')) || 0
+        return latest - earliest || right.pr_number.localeCompare(left.pr_number)
+      })
+    }
+
     return result
   }
 
