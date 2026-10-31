@@ -310,6 +310,7 @@ const UserManegement = () => {
           { title: 'User Management', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--admin">
         <div className="flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-10 py-5 sm:flex-row sm:items-center sm:gap-2">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">SIMPUSKAPA User List</h1>
@@ -343,6 +344,7 @@ const UserManegement = () => {
             ]}
           />
         </div>
+      </div>
       </Dashboard>
       <Drawer
         isOpen={editRoleDrawer}
