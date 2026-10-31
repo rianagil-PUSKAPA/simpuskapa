@@ -57,6 +57,15 @@ function pick(root: HTMLElement, names: string[]): string {
   return findValue(root, names) || '—'
 }
 
+// RF Activity Name is requisitionFormDetail.about_request, not the project Activity.
+// Prefer the explicit React-supplied value so printing works from any RF tab.
+function rfActivityName(root: HTMLElement): string {
+  return (
+    norm(root.getAttribute('data-sim-rf-activity-name')) ||
+    textOf(root.querySelector('[data-testid="about-request-description"]'))
+  )
+}
+
 function collectWorkflow(root: HTMLElement, name: string) {
   const label = findLabel(root, [name])
   if (!label) return { role: name, person: '—', status: '—', date: '' }
@@ -397,7 +406,7 @@ function buildDocument(root: HTMLElement, number: string, title: string): string
   const base = [
     fieldHtml('Project', pick(root, ['Project'])),
     fieldHtml('Partner', pick(root, ['Partner'])),
-    fieldHtml('Activity Name', pick(root, isRF ? ['Activity Name'] : ['Activity Name', 'Activity'])),
+    fieldHtml('Activity Name', isRF ? rfActivityName(root) : pick(root, ['Activity Name', 'Activity'])),
     fieldHtml(kind === 'TE' ? 'Estimated Payment Date' : 'Payment / Request Date', pick(root, dateNames)),
     fieldHtml(isRF ? 'Requisition Number' : 'Finance Number', number),
   ]
@@ -588,6 +597,10 @@ export function printCurrentForm() {
   const number = formNumber(root)
   if (!number) {
     window.alert('Cannot print: the form number was not found. Please open the form detail page.')
+    return
+  }
+  if (printKind(number) === 'RF' && !rfActivityName(root)) {
+    window.alert('Cannot print: RF Activity Name is missing. Please reopen the requisition detail page.')
     return
   }
   if (root.querySelector('.table-container') && collectTables(root, printKind(number)).length === 0) {
