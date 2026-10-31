@@ -160,6 +160,7 @@ const ProcurementDashboard = ({
       >
         <div
           className="sim-modern-forms sim-modern-forms-rf"
+          data-sim-rf-activity-name={procurementIdentifier === 'detail' ? requisitionFormDetail?.about_request ?? '' : undefined}
           data-sim-print-ready={
             procurementIdentifier === 'detail' && requisitionFormDetail?.program_manager_approval_status === 'approved'
               ? 'true'
