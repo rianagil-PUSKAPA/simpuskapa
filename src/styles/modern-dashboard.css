@@ -3524,8 +3524,8 @@
 
 /* Vendor and Employee detail headers use px-7 pb-5, not the generic
    px-7 py-5 selector from the original UI rollout. */
-.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
-.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
+.sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
+.sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -3538,8 +3538,8 @@
   background: radial-gradient(circle at 98% 0%, rgba(244, 119, 18, 0.065), transparent 33%), #ffffff;
   box-shadow: 0 9px 29px rgba(26, 44, 73, 0.045);
 }
-.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1,
-.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1 {
+.sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1,
+.sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1 {
   margin: 0 0 4px;
   color: #182b49;
   font-size: clamp(23px, 2vw, 30px);
@@ -3547,20 +3547,33 @@
   letter-spacing: -0.03em;
   font-weight: 750;
 }
-.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
-.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
+.sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
+.sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
   min-width: 0;
   margin-left: auto;
 }
-.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']),
-.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']) {
+.sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']),
+.sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']) {
   min-height: 40px;
   border-radius: 10px;
 }
 
+/* Align detail tabs with their header cards without affecting list tabs. */
+.sim-ui-v3--detail-vendor [role='tablist'],
+.sim-ui-v3--detail-employee [role='tablist'] {
+  min-width: 0 !important;
+  width: auto;
+}
+.sim-ui-v3--detail-vendor [role='tablist'] + div,
+.sim-ui-v3--detail-employee [role='tablist'] + div {
+  min-width: 0;
+  margin: 16px 28px 0 !important;
+  padding: 0 !important;
+}
+
 /* Match approved RF / PR: put each information tab on a solid white surface. */
-.sim-ui-v3--vendor [role='tabpanel'],
-.sim-ui-v3--people [role='tabpanel'] {
+.sim-ui-v3--detail-vendor [role='tabpanel'],
+.sim-ui-v3--detail-employee [role='tabpanel'] {
   min-width: 0;
   width: 100%;
   margin: 0 auto 22px;
@@ -3570,21 +3583,25 @@
   background: #ffffff;
   box-shadow: 0 8px 28px rgba(36, 50, 74, 0.04);
 }
-.sim-ui-v3--vendor [role='tabpanel'] .table-container,
-.sim-ui-v3--people [role='tabpanel'] .table-container {
+.sim-ui-v3--detail-vendor [role='tabpanel'] .table-container,
+.sim-ui-v3--detail-employee [role='tabpanel'] .table-container {
   max-width: 100%;
 }
 @media (max-width: 900px) {
+  .sim-ui-v3--detail-vendor [role='tablist'] + div,
+  .sim-ui-v3--detail-employee [role='tablist'] + div {
+    margin: 12px 16px 0 !important;
+  }
   .sim-modern-forms-rf .sim-rf-pending-panel {
     padding: 20px !important;
   }
-  .sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
-  .sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
+  .sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
+  .sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
     margin: 14px 16px 0 !important;
     padding: 20px !important;
   }
-  .sim-ui-v3--vendor [role='tabpanel'],
-  .sim-ui-v3--people [role='tabpanel'] {
+  .sim-ui-v3--detail-vendor [role='tabpanel'],
+  .sim-ui-v3--detail-employee [role='tabpanel'] {
     padding: 18px;
   }
 }
@@ -3592,12 +3609,12 @@
   .sim-modern-forms-rf .sim-rf-pending-panel {
     padding: 15px !important;
   }
-  .sim-ui-v3--vendor [role='tabpanel'],
-  .sim-ui-v3--people [role='tabpanel'] {
+  .sim-ui-v3--detail-vendor [role='tabpanel'],
+  .sim-ui-v3--detail-employee [role='tabpanel'] {
     padding: 14px;
   }
-  .sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
-  .sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
+  .sim-ui-v3--detail-vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
+  .sim-ui-v3--detail-employee > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
     margin-left: 0;
     width: 100%;
   }
