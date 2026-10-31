@@ -26,9 +26,11 @@ const AddEmployee = ({ employeeId }) => {
           { title: `${employeeId ? 'Edit' : 'Add'} Employee`, url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--wizard">
         <AddEmployeeFormWizardProvider>
           <AddEmployeeWizard />
         </AddEmployeeFormWizardProvider>
+      </div>
       </Dashboard>
     </>
   )
