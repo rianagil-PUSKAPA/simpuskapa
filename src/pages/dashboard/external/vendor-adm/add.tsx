@@ -20,9 +20,11 @@ const AddVendor = () => {
           { title: 'Add New Vendor', url: 'add-new-vendor' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--wizard">
         <AddVendorFormWizardProvider>
           <AddVendorWizard />
         </AddVendorFormWizardProvider>
+      </div>
       </Dashboard>
     </>
   )
