@@ -177,6 +177,7 @@ const EmployeesTax = () => {
           },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--finance">
         <form onSubmit={handleSubmit(updateEmployeeTaxSubmit)}>
           <div className="flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-10 py-5 sm:flex-row sm:items-center sm:gap-2">
             <div>
@@ -301,6 +302,7 @@ const EmployeesTax = () => {
             )}
           </div>
         </form>
+      </div>
       </Dashboard>
     </>
   )
