@@ -337,6 +337,7 @@ const PaymentRequestListIndex = ({
           { title: 'List of Payment Request', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--finance">
         <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">Payment Request</h1>
@@ -450,6 +451,7 @@ const PaymentRequestListIndex = ({
             <PaidTable paymentList={paidPayments.data} dateRange={paidDateRange} setDateRange={setPaidDateRange} />
           </div>
         </HorizontalTabs>
+      </div>
       </Dashboard>
     </>
     // <>Payment Request List</>
