@@ -1681,7 +1681,7 @@ export const RequisitionDetail = ({
         >
           {/* Detail Requisition Form */}
           <div>
-            <div className={cn(!isApprovedByPMHOO && 'px-10 py-8')}>
+            <div className={cn(!isApprovedByPMHOO && 'px-10 py-8 sim-rf-pending-panel')}>
               {requisitionFormDetail?.has_retur ? (
                 <div className="mb-5 flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 px-6 py-[22px]">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-primary-50 bg-primary-100">
