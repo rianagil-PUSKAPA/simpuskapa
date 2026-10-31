@@ -128,7 +128,7 @@ export class RfRepository {
       q['where']['closed_at'] = null
     }
 
-    q['orderBy'] = { requested_at: 'asc' }
+    q['orderBy'] = [{ requested_at: 'desc' }, { request_number_seq: 'desc' }]
 
     return this.prisma.requisition_form.findMany(q)
   }
@@ -138,6 +138,7 @@ export class RfRepository {
       where: {
         closed_at: null,
       },
+      orderBy: [{ requested_at: 'desc' }, { request_number_seq: 'desc' }],
       include: {
         program_projects_related: {
           include: {
