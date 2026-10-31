@@ -112,9 +112,16 @@ def main() -> None:
     if remote_css.count(CSS_MARKER) != 1:
         abort("Feature branch CSS marker missing/duplicated")
     css_addition = remote_css[remote_css.index(CSS_MARKER):]
-    for module in set(FILES.values()):
+    # Some pages (for example Procurement) intentionally use the shared
+    # .sim-ui-v3 rules rather than their own module-specific CSS selector.
+    # Verify the common styling first; only require selectors for modules
+    # that actually have dedicated rules in this bundle.
+    if ".sim-ui-v3 {" not in css_addition:
+        abort("Shared UI completion CSS is missing")
+    dedicated_modules = {"finance", "vendor", "people", "timeoff", "admin", "workflow", "wizard"}
+    for module in sorted(dedicated_modules):
         if f".sim-ui-v3--{module}" not in css_addition:
-            abort(f"CSS module missing: {module}")
+            abort(f"Dedicated CSS module missing: {module}")
     print("Feature branch:", branch_sha[:12])
 
     existing = {}
