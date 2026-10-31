@@ -397,7 +397,7 @@ function buildDocument(root: HTMLElement, number: string, title: string): string
   const base = [
     fieldHtml('Project', pick(root, ['Project'])),
     fieldHtml('Partner', pick(root, ['Partner'])),
-    fieldHtml('Activity Name', pick(root, ['Activity Name', 'Activity'])),
+    fieldHtml('Activity Name', pick(root, isRF ? ['Activity Name'] : ['Activity Name', 'Activity'])),
     fieldHtml(kind === 'TE' ? 'Estimated Payment Date' : 'Payment / Request Date', pick(root, dateNames)),
     fieldHtml(isRF ? 'Requisition Number' : 'Finance Number', number),
   ]
