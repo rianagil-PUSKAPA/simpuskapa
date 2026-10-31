@@ -3490,3 +3490,115 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Form detail consistency v4: RF pending body + Vendor/Employee detail. */
+/* HorizontalTabs(removedLayout=true) renders only its first child, without a
+   Headless UI tabpanel. This restores the panel PR already has while pending
+   RF, RF in revision, and rejected RF are being viewed. */
+.sim-modern-forms-rf .sim-rf-pending-panel {
+  min-width: 0;
+  width: 100%;
+  margin: 0 0 22px;
+  padding: 27px 28px !important;
+  border: 1px solid var(--sf-border, #e4eaf1);
+  border-radius: 19px;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(36, 50, 74, 0.043);
+}
+.sim-modern-forms-rf .sim-rf-pending-panel > .grid:first-child {
+  margin-top: 0;
+}
+/* Headings/amounts should remain legible and never overflow the PR-like card. */
+.sim-modern-forms-rf .sim-rf-pending-panel p.text-4xl {
+  font-size: clamp(25px, 2.35vw, 38px);
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+.sim-modern-forms-rf .sim-rf-pending-panel .table-container {
+  overflow: hidden;
+}
+.sim-modern-forms-rf .sim-rf-pending-panel .table-wrapper {
+  overflow-x: auto;
+}
+
+/* Vendor and Employee detail headers use px-7 pb-5, not the generic
+   px-7 py-5 selector from the original UI rollout. */
+.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
+.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 18px;
+  margin: 22px 28px 0 !important;
+  padding: 25px 28px !important;
+  border: 1px solid #e4eaf1 !important;
+  border-radius: 20px;
+  background: radial-gradient(circle at 98% 0%, rgba(244, 119, 18, 0.065), transparent 33%), #ffffff;
+  box-shadow: 0 9px 29px rgba(26, 44, 73, 0.045);
+}
+.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1,
+.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] h1 {
+  margin: 0 0 4px;
+  color: #182b49;
+  font-size: clamp(23px, 2vw, 30px);
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  font-weight: 750;
+}
+.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
+.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
+  min-width: 0;
+  margin-left: auto;
+}
+.sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']),
+.sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] :is(button, [role='button']) {
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+/* Match approved RF / PR: put each information tab on a solid white surface. */
+.sim-ui-v3--vendor [role='tabpanel'],
+.sim-ui-v3--people [role='tabpanel'] {
+  min-width: 0;
+  width: 100%;
+  margin: 0 auto 22px;
+  padding: 22px 26px;
+  border: 1px solid #e4eaf1;
+  border-radius: 19px;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(36, 50, 74, 0.04);
+}
+.sim-ui-v3--vendor [role='tabpanel'] .table-container,
+.sim-ui-v3--people [role='tabpanel'] .table-container {
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .sim-modern-forms-rf .sim-rf-pending-panel {
+    padding: 20px !important;
+  }
+  .sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'],
+  .sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] {
+    margin: 14px 16px 0 !important;
+    padding: 20px !important;
+  }
+  .sim-ui-v3--vendor [role='tabpanel'],
+  .sim-ui-v3--people [role='tabpanel'] {
+    padding: 18px;
+  }
+}
+@media (max-width: 600px) {
+  .sim-modern-forms-rf .sim-rf-pending-panel {
+    padding: 15px !important;
+  }
+  .sim-ui-v3--vendor [role='tabpanel'],
+  .sim-ui-v3--people [role='tabpanel'] {
+    padding: 14px;
+  }
+  .sim-ui-v3--vendor > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child,
+  .sim-ui-v3--people > [class~='px-7'][class~='pb-5'][class~='border-b-gray-200'] > div:last-child {
+    margin-left: 0;
+    width: 100%;
+  }
+}
