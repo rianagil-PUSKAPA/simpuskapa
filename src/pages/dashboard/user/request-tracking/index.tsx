@@ -428,6 +428,7 @@ const NotifiedActionByList = () => {
     <>
       <NextSeo title="Request Tracking" canonical={`${MAIN_URL_FE}dashboard/user/request-tracking`} />
       <Dashboard breadcrumbLists={[{ title: 'Request Tracking', url: '' }]}>
+        <div className="sim-ui-v3 sim-ui-v3--workflow">
         <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">Request Tracking</h1>
@@ -500,6 +501,7 @@ const NotifiedActionByList = () => {
             />
           </div>
         </HorizontalTabs>
+      </div>
       </Dashboard>
     </>
   )
