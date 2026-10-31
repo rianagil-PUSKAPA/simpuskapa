@@ -31,9 +31,11 @@ const AddVendor = ({ vendorDetail }: Props) => {
           { title: 'Edit', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--wizard">
         <AddVendorFormWizardProvider>
           <AddVendorWizard />
         </AddVendorFormWizardProvider>
+      </div>
       </Dashboard>
     </>
   )
