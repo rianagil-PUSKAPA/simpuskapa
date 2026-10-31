@@ -3213,3 +3213,280 @@
   border-color: #d76200 !important;
   color: #ffffff !important;
 }
+
+
+/* SIM PUSKAPA UI completion v3 — isolated to unfinished modules. */
+.sim-ui-v3 {
+  display: contents;
+}
+
+/* Use the same white card language as Project Detail without changing page hierarchy. */
+.sim-ui-v3 > div:first-child[class*='border-b'],
+.sim-ui-v3 > div > div:first-child[class*='border-b'],
+.sim-ui-v3 > form > div:first-child[class*='border-b'] {
+  margin: 22px 28px 0 !important;
+  padding: 25px 30px !important;
+  border: 1px solid #e5eaf2 !important;
+  border-radius: 22px !important;
+  background: linear-gradient(110deg, #ffffff 60%, #fff5eb 100%) !important;
+  box-shadow: 0 9px 30px rgba(25, 44, 75, 0.045);
+}
+.sim-ui-v3 > div:first-child[class*='border-b'] h1,
+.sim-ui-v3 > div > div:first-child[class*='border-b'] h1,
+.sim-ui-v3 > form > div:first-child[class*='border-b'] h1 {
+  color: #182b49 !important;
+  font-size: clamp(24px, 2.15vw, 32px) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+.sim-ui-v3 > div:first-child[class*='border-b'] p,
+.sim-ui-v3 > div > div:first-child[class*='border-b'] p {
+  color: #697d9a !important;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Keep existing Headless UI tabs, state, and badges; update appearance only. */
+.sim-ui-v3 [role='tablist'] {
+  min-height: 66px;
+  align-items: center;
+  gap: 8px !important;
+  margin: 18px 28px 0;
+  padding: 7px 10px !important;
+  border: 1px solid #e4eaf1 !important;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 5px 21px rgba(23, 42, 72, 0.035);
+}
+.sim-ui-v3 [role='tablist'] [role='tab'] {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 12px 17px !important;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: #667892;
+  transition: background-color 0.16s, color 0.16s, border-color 0.16s;
+}
+.sim-ui-v3 [role='tablist'] [role='tab'][aria-selected='true'] {
+  border-color: #ffdfc5 !important;
+  background: #fff1e6 !important;
+  color: #e66a05 !important;
+}
+.sim-ui-v3 [role='tablist'] [role='tab']:not([aria-selected='true']):not(:disabled):hover {
+  background: #f6f8fb;
+  color: #253853;
+}
+.sim-ui-v3 [role='tablist'] [role='tab']:focus-visible {
+  outline: 3px solid rgba(244, 119, 18, 0.23);
+  outline-offset: 2px;
+}
+.sim-ui-v3 [role='tablist'] [role='tab']:disabled {
+  pointer-events: none;
+  opacity: 0.3;
+}
+.sim-ui-v3 [role='tabpanel'] {
+  min-width: 0;
+}
+
+/* Shared TanStack tables: preserve column widths, sorting, scrollbars and pagination. */
+.sim-ui-v3 .table-container {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #e3e9f1;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(26, 43, 73, 0.035);
+}
+.sim-ui-v3 .table-container .table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.sim-ui-v3 .table-container table thead {
+  background: #f7f9fc !important;
+  border-color: #e6ebf2 !important;
+}
+.sim-ui-v3 .table-container table thead th {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  color: #687d99 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.005em;
+  background-color: #f7f9fc;
+}
+.sim-ui-v3 .table-container table tbody tr {
+  border-color: #eef1f5 !important;
+  transition: background-color 0.15s ease;
+}
+.sim-ui-v3 .table-container table tbody tr:hover {
+  background: #fffaf6;
+}
+.sim-ui-v3 .table-container table tbody td {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  color: #334964;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.sim-ui-v3 .table-container .table-selection > div:first-child,
+.sim-ui-v3 .table-container .table-selection > div:first-child > div {
+  background: #f7f9fc;
+}
+.sim-ui-v3 .table-container .table-selection > div:not(:first-child) > div:hover {
+  background-color: #fffaf6;
+}
+.sim-ui-v3 .table-container .top-scrollbar {
+  background: #ffffff;
+}
+.sim-ui-v3 input[type='search'],
+.sim-ui-v3 input[placeholder*='Search'],
+.sim-ui-v3 input[placeholder*='search'] {
+  min-height: 42px;
+  border: 1px solid #dfe6f0;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #273c56;
+  box-shadow: 0 2px 7px rgba(30, 47, 76, 0.025);
+}
+.sim-ui-v3 input:focus-visible,
+.sim-ui-v3 select:focus-visible,
+.sim-ui-v3 textarea:focus-visible {
+  outline-color: #f47712;
+}
+
+/* The generic headings and data areas are given matching spacing. */
+.sim-ui-v3 :where(h1, h2, h3) {
+  text-wrap: pretty;
+}
+.sim-ui-v3 .table-wrapper {
+  scrollbar-color: #cad3df transparent;
+}
+.sim-ui-v3 :where(.rounded-xl, .rounded-2xl)[class*='border-gray-200'] {
+  border-color: #e5eaf2;
+}
+
+/* Reporting overview: better hierarchy and responsive finance metrics. */
+.sim-ui-v3--finance > div.p-7 > div {
+  overflow: hidden;
+  border-color: #e3e9f1 !important;
+  border-radius: 22px !important;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(28, 44, 71, 0.04);
+}
+.sim-ui-v3--finance > div.p-7 > div > div:first-child {
+  padding: 24px 28px;
+  background: linear-gradient(110deg, #ffffff 45%, #fff5eb 100%);
+}
+.sim-ui-v3--finance > div.p-7 > div > .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  padding: 24px;
+}
+.sim-ui-v3--finance > div.p-7 > div > .grid > div {
+  min-width: 0;
+  border-color: #e5eaf2;
+  border-radius: 16px;
+  background: #fff;
+}
+.sim-ui-v3--finance > div.p-7 > div > .grid > div p[class*='text-4xl'] {
+  overflow-wrap: anywhere;
+  font-size: clamp(22px, 2.15vw, 31px);
+  letter-spacing: -0.03em;
+}
+.sim-ui-v3--finance > div.p-7 > div > .flex.flex-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 24px 24px;
+}
+.sim-ui-v3--finance > div.p-7 > div > .flex.flex-col > div {
+  min-width: 0;
+  border-color: #e5eaf2;
+  border-radius: 16px;
+}
+.sim-ui-v3--finance > div.p-7 > div > .flex.flex-col p[class*='text-4xl'] {
+  overflow-wrap: anywhere;
+  font-size: clamp(21px, 2vw, 30px);
+}
+
+/* Vendor and employee detail: improve long text and grouping. */
+.sim-ui-v3--vendor :where(h1, h2),
+.sim-ui-v3--people :where(h1, h2) {
+  color: #1b2e4b;
+}
+.sim-ui-v3--vendor .table-container,
+.sim-ui-v3--people .table-container,
+.sim-ui-v3--timeoff .table-container,
+.sim-ui-v3--admin .table-container,
+.sim-ui-v3--workflow .table-container {
+  margin-bottom: 18px;
+}
+.sim-ui-v3--vendor [role='tablist'],
+.sim-ui-v3--people [role='tablist'],
+.sim-ui-v3--timeoff [role='tablist'] {
+  overflow-x: auto;
+}
+.sim-ui-v3--people .table-container td,
+.sim-ui-v3--vendor .table-container td {
+  overflow-wrap: anywhere;
+}
+
+/* Create/edit wizards: readable at 100% zoom; never change input or validation. */
+.sim-ui-v3--wizard h1 {
+  font-size: clamp(25px, 2.25vw, 32px) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em;
+  color: #1b2e4b;
+}
+.sim-ui-v3--wizard h2 {
+  font-size: 19px !important;
+  font-weight: 700;
+  color: #243956;
+}
+.sim-ui-v3--wizard :where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  max-width: 100%;
+  border-radius: 10px;
+}
+.sim-ui-v3--wizard :where(input, select, textarea):focus-visible {
+  outline-color: #f47712;
+}
+.sim-ui-v3--wizard [class*='border-gray-200'][class*='rounded'] {
+  border-color: #e1e7f0;
+}
+.sim-ui-v3--wizard button:focus-visible {
+  outline: 3px solid rgba(244, 119, 18, 0.25);
+  outline-offset: 2px;
+}
+@media (max-width: 1400px) {
+  .sim-ui-v3--finance > div.p-7 > div > .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .sim-ui-v3 > div:first-child[class*='border-b'],
+  .sim-ui-v3 > div > div:first-child[class*='border-b'],
+  .sim-ui-v3 > form > div:first-child[class*='border-b'] {
+    margin: 14px 16px 0 !important;
+    padding: 20px !important;
+  }
+  .sim-ui-v3 [role='tablist'] {
+    margin: 12px 16px 0;
+    min-height: 58px;
+    padding: 6px !important;
+  }
+  .sim-ui-v3 [role='tablist'] [role='tab'] {
+    padding: 10px 12px !important;
+  }
+  .sim-ui-v3--finance > div.p-7 > div > .flex.flex-col {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .sim-ui-v3--finance > div.p-7 > div > .grid {
+    grid-template-columns: 1fr;
+  }
+}
