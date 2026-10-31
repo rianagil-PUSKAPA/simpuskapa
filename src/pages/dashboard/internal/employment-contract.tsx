@@ -554,6 +554,7 @@ const EmployeeContract = ({ spv_id }) => {
           { title: 'Employment & Contract', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--people">
         <div className="mb-1 mt-5 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 pb-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">Employment & Contract</h1>
@@ -695,6 +696,7 @@ const EmployeeContract = ({ spv_id }) => {
             />
           </div>
         </HorizontalTabs>
+      </div>
       </Dashboard>
 
       {/* Add Contract */}
