@@ -7,6 +7,7 @@ No new backup, no git merge, no changes to workflows.
 """
 from pathlib import Path
 import os
+import re
 import stat
 import subprocess
 import tempfile
@@ -110,10 +111,14 @@ function rfActivityName(root: HTMLElement): string {
         "    fieldHtml('Activity Name', pick(root, isRF ? ['Activity Name'] : ['Activity Name', 'Activity'])),",
     ]
     proper = "    fieldHtml('Activity Name', isRF ? rfActivityName(root) : pick(root, ['Activity Name', 'Activity'])),"
-    if proper in util:
-        if util.count(proper) != 1:
-            abort("RF printed field duplicated")
+    dedicated_field = re.findall(
+        r"fieldHtml\\(\\s*['\\\"]Activity Name['\\\"]\\s*,\\s*isRF\\s*\\?\\s*rfActivityName\\(root\\)",
+        util,
+    )
+    if len(dedicated_field) == 1:
         print("SKIP: PDF already uses dedicated RF Activity Name reader")
+    elif len(dedicated_field) > 1:
+        abort("RF printed field duplicated")
     else:
         old = [x for x in candidates if x in util]
         if len(old) != 1:
@@ -146,12 +151,16 @@ function rfActivityName(root: HTMLElement): string {
     for marker in [
         "function rfActivityName(",
         "norm(root.getAttribute('data-sim-rf-activity-name'))",
-        proper,
         guard,
         "function buildDocument(",
     ]:
         if marker not in util:
             abort(f"Missing Print Form marker: {marker}")
+    if len(re.findall(
+        r"fieldHtml\\(\\s*['\\\"]Activity Name['\\\"]\\s*,\\s*isRF\\s*\\?\\s*rfActivityName\\(root\\)",
+        util,
+    )) != 1:
+        abort("RF printed Activity Name expression not installed")
     for wrong in candidates:
         if wrong in util:
             abort("Wrong Print Form field expression still present")
