@@ -27,9 +27,11 @@ const EditProgram = ({ programDetail }: Props) => {
           { title: 'Edit Project', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--wizard">
         <AddProgramFormWizardProvider>
           <AddProgramWizard />
         </AddProgramFormWizardProvider>
+      </div>
       </Dashboard>
     </>
   )
