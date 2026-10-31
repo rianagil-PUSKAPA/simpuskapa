@@ -158,7 +158,7 @@ const VendorDetailLayout = ({ vendorDetail }: EmployeeListProps) => {
           },
         ]}
       >
-        <div className="sim-ui-v3 sim-ui-v3--vendor">
+        <div className="sim-ui-v3 sim-ui-v3--vendor sim-ui-v3--detail-vendor">
         <>
           <div className="mb-1 mt-5 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 pb-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
             <div className="inline-flex items-center gap-3.5 xxs:gap-4">
