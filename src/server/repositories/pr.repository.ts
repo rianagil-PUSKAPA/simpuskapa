@@ -317,7 +317,11 @@ export class PRRepository {
     }
     if (vendorId && vendorId != '' && vendorId != undefined) {
       where['vendor_id'] = vendorId
+      // Preserve chronological payment history for vendor tax calculations.
       q['orderBy'] = { created_at: 'asc' }
+    } else {
+      // All other finance lists: newest submitted form first.
+      q['orderBy'] = [{ created_at: 'desc' }, { request_number_seq: 'desc' }]
     }
 
     if (finance_checker_rejected_by && finance_checker_rejected_by != '' && finance_checker_rejected_by != undefined) {
