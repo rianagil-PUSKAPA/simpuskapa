@@ -79,7 +79,7 @@ export class AarService {
         updated_at: true,
         created_by: true,
       },
-      orderBy: { updated_at: 'desc' },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       take: 500,
     })
   }
