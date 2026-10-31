@@ -21,6 +21,7 @@ const ProcurementListIndex = () => {
           { title: 'List of Requisition Form', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--procurement">
         <div className="mb-1 flex flex-col items-start justify-between gap-4 border-b border-b-gray-200 px-7 py-5 sm:flex-row sm:items-center sm:gap-2 xl:px-10">
           <div>
             <h1 className="mb-1 text-2xl font-semibold text-gray-900">Requisition Form</h1>
@@ -29,6 +30,7 @@ const ProcurementListIndex = () => {
         <div className="p-7 xl:p-10">
           <RequisitionList slugIdentifier={[]} isGlobal={true} />
         </div>
+      </div>
       </Dashboard>
     </>
   )
