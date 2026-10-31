@@ -71,6 +71,7 @@ const Reporting = () => {
           { title: 'Reporting', url: '' },
         ]}
       >
+        <div className="sim-ui-v3 sim-ui-v3--finance">
         <div className="p-7 xl:p-10">
           <div className="rounded-xl border border-gray-200 shadow-xs">
             <div className="flex items-center justify-between border-b border-b-gray-200 px-6 py-5">
@@ -216,6 +217,7 @@ const Reporting = () => {
             </div>
           </div>
         </div>
+      </div>
       </Dashboard>
     </>
   )
