@@ -30,7 +30,7 @@ Desktop 0.3.0-beta.1 adds automatic update downloads for Windows EXE/NSIS, follo
 
 ## Notification email links
 
-Desktop 0.2.0 registers `simpuskapa://` on Windows (EXE/MSI) and macOS. New notification emails offer **Open in Desktop** and **Continue in Browser**, preserving the dashboard destination through sign-in. Browser installation detection is best effort, with a timed browser fallback. Existing Desktop 0.1.0 users must install 0.2.0 manually. See [EMAIL_LINKS.md](EMAIL_LINKS.md) for behavior, limitations, and acceptance checks.
+Desktop 0.2.0 and later register `simpuskapa://` on Windows (EXE/MSI) and macOS. New notification emails offer **Open in Desktop** and **Continue in Browser**, preserving the dashboard destination through sign-in. Browser installation detection is best effort, with a timed browser fallback. Existing Desktop 0.1.0/0.2.0 users install the latest 0.3.0-beta.1 build manually once to receive the updater. See [EMAIL_LINKS.md](EMAIL_LINKS.md) for behavior, limitations, and acceptance checks.
 
 ## Apply the latest email links and download URLs to EC2
 
