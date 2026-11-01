@@ -25,6 +25,11 @@ on:
       - 'deployment/apply-desktop-release.py'
       - '.github/workflows/desktop-installers.yml'
   workflow_dispatch:
+    inputs:
+      signed:
+        description: 'Sign/notarize with configured certificates (trunk only; bump the version first)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +41,8 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     timeout-minutes: 15
     defaults:
       run:
@@ -49,6 +56,12 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - id: release
+        shell: bash
+        run: node scripts/release-info.cjs >> "$GITHUB_OUTPUT"
+      - name: Restrict signed builds to trunk
+        if: inputs.signed && github.ref != 'refs/heads/trunk'
+        run: exit 1
 
   installers:
     needs: verify
@@ -79,6 +92,9 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm run test:smoke
+      - name: Verify real update downloads and checksum rejection
+        if: matrix.platform == 'Windows-x64'
+        run: node --test test/updater.smoke.cjs
       - name: Check desktop download and email link pages
         if: matrix.platform == 'Windows-x64'
         run: node scripts/browser-ui-qa.cjs
@@ -89,24 +105,47 @@ jobs:
           name: SIM-PUSKAPA-browser-popup-previews
           path: desktop/test-results/browser-popup/*.png
           if-no-files-found: ignore
-      - run: npm run ${{ matrix.command }}
+      - name: Build preview installers
+        if: ${{ !inputs.signed }}
+        run: npm run ${{ matrix.command }}
+      - name: Build signed installers
+        if: inputs.signed && github.ref == 'refs/heads/trunk'
+        run: npm run ${{ matrix.command }}
+        env:
+          SIM_DESKTOP_SIGNED: 'true'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'true'
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Validate update manifests
+        run: node scripts/verify-update-artifacts.cjs
       - name: Write installer checksums
         shell: bash
         run: node scripts/checksums.cjs
       - uses: actions/upload-artifact@v4
         with:
-          name: SIM-PUSKAPA-Desktop-0.2.0-preview-${{ matrix.platform }}
+          name: SIM-PUSKAPA-Desktop-${{ needs.verify.outputs.version }}-${{ matrix.platform }}
           path: |
             desktop/dist/*.exe
             desktop/dist/*.msi
             desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.blockmap
+            desktop/dist/latest*.yml
+            desktop/dist/beta*.yml
+            desktop/dist/alpha*.yml
+            desktop/dist/rc*.yml
             desktop/dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
   publish-preview:
     if: github.ref == 'refs/heads/trunk'
-    needs: installers
+    needs: [verify, installers]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -115,24 +154,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: SIM-PUSKAPA-Desktop-0.2.0-preview-*
+          pattern: SIM-PUSKAPA-Desktop-${{ needs.verify.outputs.version }}-*
           path: desktop/dist
           merge-multiple: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix desktop --ignore-scripts --no-audit --no-fund
       - name: Generate combined installer checksums
         run: node desktop/scripts/checksums.cjs
       - name: Publish the preview download files
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: |
-          release_tag='v0.2.0-preview.1'
-          if gh release view "$release_tag" >/dev/null 2>&1; then
-            echo 'The preview is already published; preserving its installer files.'
-          else
-            gh release create "$release_tag" \
-              --target "$GITHUB_SHA" \
-              --prerelease \
-              --title 'SIM PUSKAPA Desktop 0.2.0 (Preview)' \
-              --notes-file desktop/RELEASE_NOTES.md \
-              desktop/dist/*.exe desktop/dist/*.msi desktop/dist/*.dmg desktop/dist/SHA256SUMS.txt
-          fi
+        run: node desktop/scripts/publish-release.cjs

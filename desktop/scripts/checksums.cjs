@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto')
 const directory = path.join(__dirname, '..', 'dist')
 const names = fs
   .readdirSync(directory)
-  .filter((name) => /\.(exe|msi|dmg)$/.test(name))
+  .filter((name) => /\.(exe|msi|dmg|zip|blockmap)$/.test(name) || /^(latest|alpha|beta|rc)(-mac)?\.yml$/.test(name))
   .sort()
 if (!names.length) throw new Error('No installers were generated')
 const lines = names.map(

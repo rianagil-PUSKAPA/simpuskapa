@@ -12,9 +12,9 @@ The shared mail transport covers existing workflow notifications and the AAR sen
 
 ## Deployment
 
-1. Merge the PR after the Windows/macOS checks pass. Wait for `v0.2.0-preview.1` to contain the Windows EXE/MSI, both Mac DMGs and SHA256SUMS.txt.
+1. Merge the PR after the Windows/macOS checks pass. Wait for the latest desktop release to contain the Windows EXE/MSI, both Mac DMGs and SHA256SUMS.txt.
 2. From the existing EC2 checkout, run `deployment/apply-email-desktop-links.py` with the merged commit SHA. This deployment must rebuild both the frontend and backend: the backend creates the new email URLs.
-3. Install Desktop 0.2.0 on Windows/macOS. Existing users install this update manually; binary auto-update is not enabled.
+3. Install Desktop 0.3.0-beta.1 on Windows/macOS. Existing users install this update manually once; see [AUTO_UPDATES.md](AUTO_UPDATES.md) for automatic Windows EXE updates and Mac/MSI limitations.
 4. Open a new notification email. Verify the browser permission prompt, desktop navigation to the specific item, browser choice, browser fallback without a registered handler, and destination preservation after signing out. No real notification emails are sent by the automated tests or deployment helper.
 
 The helper fetches source from the public repository without switching the EC2 repository, branch or Git index. It merges local source changes against the previous desktop release; overlapping edits stop deployment before any live files change. Both builds complete in a private staging directory before the two identified PM2 processes stop. Source and builds are backed up, with rollback if switching or public checks fail. It runs no migrations and changes no dependencies. It accepts `SIM_PUSKAPA_FRONTEND` / `SIM_PUSKAPA_BACKEND` when PM2 names cannot be identified automatically; it refuses watch processes or an unknown backend build path. It must be run on EC2 by an operator with the existing server access.
