@@ -1,6 +1,6 @@
 import { Button } from '@/components/Button'
 import { Modal } from '@/components/Modal'
-import { DESKTOP_RELEASE } from '@/config/desktop-release'
+import { useDesktopRelease } from '@/utils/use-desktop-release'
 import { theme } from '@/types/themes'
 import { desktopAnnouncementDismissed, dismissDesktopAnnouncement, isDesktopClient } from '@/utils/desktop-announcement'
 import { Dialog, Tab } from '@headlessui/react'
@@ -18,6 +18,7 @@ export function DesktopDownloadAnnouncement({ userId }: Props) {
   const [platform, setPlatform] = useState(0)
   const [windowsFormat, setWindowsFormat] = useState<'exe' | 'msi'>('exe')
   const [macProcessor, setMacProcessor] = useState<'arm64' | 'x64'>('arm64')
+  const { release, status: releaseStatus } = useDesktopRelease(open)
 
   useEffect(() => {
     if (!userId || isDesktopClient() || desktopAnnouncementDismissed(userId)) {
@@ -34,8 +35,9 @@ export function DesktopDownloadAnnouncement({ userId }: Props) {
     setOpen(false)
   }
 
-  const downloadUrl = platform === 0 ? DESKTOP_RELEASE.windows[windowsFormat] : DESKTOP_RELEASE.macOS[macProcessor]
+  const downloadUrl = platform === 0 ? release.windows[windowsFormat] : release.macOS[macProcessor]
   const downloadLabel = platform === 0 ? 'Download for Windows' : 'Download for macOS'
+  const signed = platform === 0 ? release.signing.windows : release.signing.macOS
 
   return (
     <Modal
@@ -155,19 +157,43 @@ export function DesktopDownloadAnnouncement({ userId }: Props) {
             </Tab.Group>
 
             <a
-              href={downloadUrl}
+              href={releaseStatus === 'loading' ? undefined : downloadUrl}
+              aria-disabled={releaseStatus === 'loading'}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={downloadLabel}
               className={`${styles.primaryButton} items-center justify-center gap-2 bg-primary-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100`}
             >
               <Download size={18} aria-hidden="true" />
-              {downloadLabel}
+              {releaseStatus === 'loading' ? 'Checking latest release…' : downloadLabel}
             </a>
-            <p className={styles.releaseInfo}>
-              Version {DESKTOP_RELEASE.version} · {DESKTOP_RELEASE.channel} · Internet connection required
+            <p className={styles.releaseInfo} aria-live="polite">
+              {releaseStatus === 'loading' ? (
+                'Checking latest version…'
+              ) : (
+                <>
+                  {releaseStatus === 'github' ? 'Latest installer' : 'Installer'} {release.version} · {release.channel}{' '}
+                  · Internet connection required
+                </>
+              )}
             </p>
-            <p className={styles.previewNote}>This preview may show a security warning during installation.</p>
+            {releaseStatus !== 'loading' && (
+              <p className={styles.previewNote}>
+                {signed === true
+                  ? 'Digitally signed release.'
+                  : signed === false
+                  ? 'Publisher signing is not yet configured.'
+                  : 'See release notes for publisher details.'}{' '}
+                <a href={release.releasePage} target="_blank" rel="noopener noreferrer" className="underline">
+                  Release notes
+                </a>
+              </p>
+            )}
+            {(releaseStatus === 'fallback' || releaseStatus === 'cached') && (
+              <p className={styles.previewNote}>
+                Showing the last available release. Latest release information is temporarily unavailable.
+              </p>
+            )}
             <button type="button" className={styles.stayLink} onClick={dismiss}>
               Stay on browser
             </button>

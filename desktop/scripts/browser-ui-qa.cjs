@@ -140,7 +140,25 @@ async function main() {
     )
     // Serve the fixture through the same mocked HTTPS origin as the existing desktop smoke test.
     // This also exercises normal browser sessionStorage instead of file-URL storage semantics.
+    let releaseVersion = '0.3.0-beta.55'
+    let signedRelease = false
     await page.route('https://sim.puskapa.org/**', async (route) => {
+      if (new URL(route.request().url()).pathname === '/api/desktop/releases') {
+        const base = `https://github.com/rianagil-PUSKAPA/simpuskapa/releases/download/v${releaseVersion}/SIM-PUSKAPA-${releaseVersion}`
+        return route.fulfill({
+          json: {
+            source: 'github',
+            release: {
+              version: releaseVersion,
+              channel: 'Beta',
+              releasePage: `https://github.com/rianagil-PUSKAPA/simpuskapa/releases/tag/v${releaseVersion}`,
+              windows: { exe: base + '-Windows-x64-Setup.exe', msi: base + '-Windows-x64-Setup.msi' },
+              macOS: { arm64: base + '-macOS-arm64.dmg', x64: base + '-macOS-x64.dmg' },
+              signing: { windows: signedRelease, macOS: signedRelease },
+            },
+          },
+        })
+      }
       const filename = {
         '/browser-ui-qa': 'index.html',
         '/open': 'index.html',
@@ -170,7 +188,13 @@ async function main() {
 
     await page.getByRole('button', { name: 'Download SIM PUSKAPA', exact: true }).click()
     await page.getByRole('heading', { name: 'Download SIM PUSKAPA', exact: true }).waitFor()
+    await page.getByText('Latest installer 0.3.0-beta.55', { exact: false }).waitFor()
+    await page.getByText('Publisher signing is not yet configured.', { exact: false }).waitFor()
+    assert.ok(!(await page.locator('body').innerText()).includes('security warning'))
     assert.match(await page.getByRole('link', { name: 'Download for Windows' }).getAttribute('href'), /Setup\.exe$/)
+    assert.ok(
+      (await page.getByRole('link', { name: 'Download for Windows' }).getAttribute('href')).includes('0.3.0-beta.55'),
+    )
     await page.getByLabel('Installer type').selectOption('msi')
     assert.match(await page.getByRole('link', { name: 'Download for Windows' }).getAttribute('href'), /Setup\.msi$/)
     await page.getByRole('tab', { name: 'macOS' }).click()
@@ -178,6 +202,18 @@ async function main() {
     await page.getByLabel('Mac processor').selectOption('x64')
     assert.match(await page.getByRole('link', { name: 'Download for macOS' }).getAttribute('href'), /x64\.dmg$/)
     await page.screenshot({ path: path.join(output, '02-download-options-desktop.png'), animations: 'disabled' })
+    releaseVersion = '0.3.0-beta.56'
+    signedRelease = true
+    await page.getByRole('button', { name: 'Stay on browser' }).click()
+    await modal.waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: 'Simulate new sign-in' }).click()
+    await page.getByRole('button', { name: 'Download SIM PUSKAPA', exact: true }).click()
+    await page.getByText('Latest installer 0.3.0-beta.56', { exact: false }).waitFor()
+    await page.getByText('Digitally signed release.', { exact: false }).waitFor()
+    assert.ok(
+      (await page.getByRole('link', { name: 'Download for Windows' }).getAttribute('href')).includes('0.3.0-beta.56'),
+    )
+    await page.screenshot({ path: path.join(output, '06-current-release-without-rebuild.png'), animations: 'disabled' })
     await page.getByRole('button', { name: 'Stay on browser' }).click()
     await modal.waitFor({ state: 'detached' })
     await page.getByRole('heading', { name: 'Main dashboard' }).waitFor()
@@ -240,7 +276,7 @@ async function main() {
       .getByRole('heading', { name: 'Notification destination: /dashboard/aar/123?preview=1', exact: true })
       .waitFor()
     console.log(
-      'PASS: download modal, four installers, session dismissal, responsive layout, desktop suppression; email chooser, desktop link, manual browser choice and automatic fallback preserve the notification destination.',
+      'PASS: runtime version/download refresh without rebuilding, dynamic publisher status; download modal, four installers, session dismissal, responsive layout, desktop suppression; email chooser, desktop link, manual browser choice and automatic fallback preserve the notification destination.',
     )
   } finally {
     await application.close()

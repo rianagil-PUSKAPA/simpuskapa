@@ -1,5 +1,5 @@
 import { Button } from '@/components/Button'
-import { DESKTOP_RELEASE } from '@/config/desktop-release'
+import { useDesktopRelease } from '@/utils/use-desktop-release'
 import { desktopProtocolUrl } from '@/shared/app-links.cjs'
 import { isDesktopClient } from '@/utils/desktop-announcement'
 import { startDesktopLaunch } from '@/utils/desktop-launch.cjs'
@@ -16,6 +16,7 @@ export function NotificationLinkLauncher({ target }: Props) {
   const [supported, setSupported] = useState(true)
   const stop = useRef<() => void>(() => {})
   const destination = target || '/dashboard'
+  const { release } = useDesktopRelease(Boolean(target))
 
   function openDesktop() {
     stop.current()
@@ -90,7 +91,7 @@ export function NotificationLinkLauncher({ target }: Props) {
             </p>
             <p className={launchStyles.download}>
               Need the desktop app?{' '}
-              <a href={DESKTOP_RELEASE.releasePage} target="_blank" rel="noopener noreferrer">
+              <a href={release.releasePage} target="_blank" rel="noopener noreferrer">
                 Download for Windows or macOS
               </a>
             </p>

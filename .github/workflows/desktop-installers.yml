@@ -6,6 +6,8 @@ on:
     paths:
       - 'desktop/**'
       - 'src/shared/app-links.cjs'
+      - 'src/shared/desktop-releases.cjs'
+      - 'src/utils/use-desktop-release.ts'
       - 'src/utils/desktop-launch.cjs'
       - 'src/utils/post-login-destination.ts'
       - 'src/components/NotificationLinkLauncher*'
@@ -121,6 +123,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Record packaged signing configuration
+        run: node scripts/release-signing.cjs
       - name: Validate update manifests
         run: node scripts/verify-update-artifacts.cjs
       - name: Write installer checksums
@@ -140,6 +144,7 @@ jobs:
             desktop/dist/alpha*.yml
             desktop/dist/rc*.yml
             desktop/dist/SHA256SUMS.txt
+            desktop/dist/signing-*.json
           if-no-files-found: error
           retention-days: 30
 
