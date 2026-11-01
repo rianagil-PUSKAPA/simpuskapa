@@ -1,0 +1,128 @@
+name: SIM PUSKAPA Desktop installers
+
+on:
+  push:
+    branches: [trunk, 'feature/desktop-*']
+    paths:
+      - 'desktop/**'
+      - 'src/pages/desktop/**'
+      - 'src/pages/api/desktop/**'
+      - 'src/components/DesktopDownloadAnnouncement*'
+      - 'src/config/desktop-release.ts'
+      - 'src/utils/desktop-announcement.ts'
+      - 'src/pages/dashboard/index.tsx'
+      - 'src/pages/welcome.tsx'
+      - 'deployment/apply-desktop-release.py'
+      - '.github/workflows/desktop-installers.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  installers:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: Windows-x64
+            command: dist:win
+          - os: macos-latest
+            platform: macOS-Intel-and-Apple-Silicon
+            command: dist:mac
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      # Preview artifacts are intentionally unsigned/ad-hoc signed. No signing secrets run on branch pushes.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:smoke
+      - name: Check the browser download announcement
+        if: matrix.platform == 'Windows-x64'
+        run: node scripts/browser-ui-qa.cjs
+      - name: Upload browser UI previews
+        if: always() && matrix.platform == 'Windows-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIM-PUSKAPA-browser-popup-previews
+          path: desktop/test-results/browser-popup/*.png
+          if-no-files-found: ignore
+      - run: npm run ${{ matrix.command }}
+      - name: Write installer checksums
+        shell: bash
+        run: node scripts/checksums.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SIM-PUSKAPA-Desktop-0.1.0-preview-${{ matrix.platform }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.msi
+            desktop/dist/*.dmg
+            desktop/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-preview:
+    if: github.ref == 'refs/heads/trunk'
+    needs: installers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: SIM-PUSKAPA-Desktop-0.1.0-preview-*
+          path: desktop/dist
+          merge-multiple: true
+      - name: Generate combined installer checksums
+        run: node desktop/scripts/checksums.cjs
+      - name: Publish the preview download files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          release_tag='v0.1.0-preview.1'
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            echo 'The preview is already published; preserving its installer files.'
+          else
+            gh release create "$release_tag" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title 'SIM PUSKAPA Desktop 0.1.0 (Preview)' \
+              --notes-file desktop/RELEASE_NOTES.md \
+              desktop/dist/*.exe desktop/dist/*.msi desktop/dist/*.dmg desktop/dist/SHA256SUMS.txt
+          fi

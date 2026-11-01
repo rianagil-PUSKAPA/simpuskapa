@@ -3,6 +3,7 @@ import { GetServerSideProps } from 'next'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { MAIN_URL_BE } from '@/utils/constant'
+import { resetDesktopAnnouncement } from '@/utils/desktop-announcement'
 
 const Welcome = ({ auth_token, refresh_token }) => {
   const router = useRouter()
@@ -25,6 +26,7 @@ const Welcome = ({ auth_token, refresh_token }) => {
     }
 
     if (auth_token) {
+      resetDesktopAnnouncement()
       loadProfile()
     }
   }, [auth_token])

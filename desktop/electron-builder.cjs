@@ -1,0 +1,47 @@
+const signed = process.env.SIM_DESKTOP_SIGNED === 'true'
+
+module.exports = {
+  appId: 'org.puskapa.sim.desktop',
+  productName: 'SIM PUSKAPA',
+  copyright: 'Copyright © PUSKAPA',
+  asar: true,
+  forceCodeSigning: signed,
+  directories: { output: 'dist', buildResources: 'assets' },
+  files: ['*.cjs', 'assets/**', 'package.json', '!test/**', '!node_modules/**'],
+  electronFuses: {
+    runAsNode: false,
+    enableNodeOptionsEnvironmentVariable: false,
+    enableNodeCliInspectArguments: false,
+    enableEmbeddedAsarIntegrityValidation: true,
+    onlyLoadAppFromAsar: true,
+  },
+  win: {
+    icon: 'assets/icon.ico',
+    target: [
+      { target: 'nsis', arch: ['x64'] },
+      { target: 'msi', arch: ['x64'] },
+    ],
+    artifactName: 'SIM-PUSKAPA-${version}-Windows-${arch}-Setup.${ext}',
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: 'SIM PUSKAPA',
+    deleteAppDataOnUninstall: false,
+  },
+  msi: { perMachine: false, oneClick: false, createDesktopShortcut: true, createStartMenuShortcut: true },
+  mac: {
+    icon: 'assets/icon.icns',
+    category: 'public.app-category.productivity',
+    target: [{ target: 'dmg', arch: ['x64', 'arm64'] }],
+    artifactName: 'SIM-PUSKAPA-${version}-macOS-${arch}.${ext}',
+    identity: signed ? undefined : '-',
+    hardenedRuntime: signed,
+    notarize: signed,
+  },
+  dmg: { title: 'SIM PUSKAPA ${version}', sign: signed },
+  publish: null,
+}

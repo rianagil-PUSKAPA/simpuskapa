@@ -1,0 +1,8 @@
+node_modules/
+dist/
+test-results/
+*.log
+*.p12
+*.pfx
+*.mobileprovision
+.env*
