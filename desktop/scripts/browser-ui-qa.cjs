@@ -110,6 +110,7 @@ async function main() {
   const application = await electron.launch({ args: [path.join(root, 'desktop')], env })
   try {
     const page = await application.firstWindow()
+    page.on('pageerror', (error) => console.error('Browser UI error:', error.message))
     await page.waitForURL('**/offline.html', { waitUntil: 'load' })
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].webContents.setUserAgent(

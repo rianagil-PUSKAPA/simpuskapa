@@ -154,12 +154,16 @@ export function DesktopDownloadAnnouncement({ userId }: Props) {
               </Tab.Panels>
             </Tab.Group>
 
-            <Button btnType="normal" size="xl" variant="primary" asChild className={styles.primaryButton}>
-              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={downloadLabel}>
-                <Download size={18} aria-hidden="true" />
-                {downloadLabel}
-              </a>
-            </Button>
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={downloadLabel}
+              className={`${styles.primaryButton} items-center justify-center gap-2 bg-primary-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100`}
+            >
+              <Download size={18} aria-hidden="true" />
+              {downloadLabel}
+            </a>
             <p className={styles.releaseInfo}>
               Version {DESKTOP_RELEASE.version} · {DESKTOP_RELEASE.channel} · Internet connection required
             </p>
