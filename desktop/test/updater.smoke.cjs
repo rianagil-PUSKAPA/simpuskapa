@@ -40,6 +40,7 @@ test(
       await application.firstWindow()
       const result = await application.evaluate(
         async ({ app }, { baseUrl, data }) => {
+          const require = process.getBuiltinModule('module').createRequire(app.getAppPath() + '/package.json')
           const path = require('node:path')
           const fs = require('node:fs')
           const { NsisUpdater } = require(path.join(app.getAppPath(), 'node_modules/electron-updater'))
@@ -97,7 +98,10 @@ test(
               await new Promise((resolve) => setTimeout(resolve, 30))
             }
             const status = controller.getStatus().state
-            const downloaded = updater.installerPath ? fs.readFileSync(updater.installerPath, 'utf8') : null
+            const downloaded =
+              updater.installerPath && fs.existsSync(updater.installerPath)
+                ? fs.readFileSync(updater.installerPath, 'utf8')
+                : null
             const beforeRestart = installs.length
             if (!corrupt) {
               response = 0
