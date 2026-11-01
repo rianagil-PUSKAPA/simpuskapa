@@ -124,7 +124,7 @@ test(
       assert.equal(result.valid.status, 'ready')
       assert.equal(result.valid.downloaded, payload.toString())
       assert.equal(result.valid.beforeRestart, 0)
-      assert.deepEqual(result.valid.installs, [[false, true]])
+      assert.deepEqual(result.valid.installs, [[true, true]])
       assert.equal(result.valid.autoInstallOnAppQuit, false)
       assert.equal(result.corrupt.status, 'error')
       assert.equal(result.corrupt.downloaded, null)

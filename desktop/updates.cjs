@@ -71,7 +71,7 @@ function createDesktopUpdater({
       })
       if (result.response === 0 && !disposed) {
         status('installing')
-        updater.quitAndInstall(false, true)
+        updater.quitAndInstall(true, true)
       }
     } finally {
       prompt = false

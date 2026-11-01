@@ -102,7 +102,7 @@ test('a deferred update installs only after the explicit Restart to Update choic
   await flush()
   f.respond(0)
   await f.controller.check(true)
-  assert.deepEqual(f.installs, [[false, true]])
+  assert.deepEqual(f.installs, [[true, true]])
   assert.equal(f.checks(), 1, 'A ready update must not download again')
   f.controller.dispose()
 })
