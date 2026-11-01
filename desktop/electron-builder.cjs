@@ -7,7 +7,16 @@ module.exports = {
   asar: true,
   forceCodeSigning: signed,
   directories: { output: 'dist', buildResources: 'assets' },
-  files: ['*.cjs', 'assets/**', 'package.json', '!test/**', '!node_modules/**'],
+  files: [
+    '*.cjs',
+    'assets/**',
+    'package.json',
+    '!test/**',
+    '!node_modules/**',
+    { from: '../src/shared/app-links.cjs', to: 'app-links.cjs' },
+  ],
+  protocols: [{ name: 'SIM PUSKAPA', schemes: ['simpuskapa'] }],
+  msiProjectCreated: require('./scripts/msi-protocol.cjs'),
   electronFuses: {
     runAsNode: false,
     enableNodeOptionsEnvironmentVariable: false,

@@ -7,6 +7,7 @@ import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 import Cookies from 'js-cookie'
+import { loginDestination } from '@/utils/post-login-destination'
 
 const Button: any = dynamic(() => import('@/components/Button').then((mod) => mod.Button))
 
@@ -64,7 +65,7 @@ export default function ChangePassword() {
       Cookies.remove('auth_token')
       Cookies.remove('refresh_token')
 
-      router.replace('/login')
+      router.replace({ pathname: '/login', query: { next: loginDestination() } })
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.response?.data?.data || 'Gagal mengganti password')
     } finally {

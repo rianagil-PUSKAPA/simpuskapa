@@ -4,8 +4,10 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { MAIN_URL_BE } from '@/utils/constant'
 import { resetDesktopAnnouncement } from '@/utils/desktop-announcement'
+import { loginDestination, rememberLoginDestination } from '@/utils/post-login-destination'
+import { safeDashboardTarget } from '@/shared/app-links.cjs'
 
-const Welcome = ({ auth_token, refresh_token }) => {
+const Welcome = ({ auth_token, refresh_token, next }) => {
   const router = useRouter()
 
   useEffect(() => {
@@ -19,9 +21,10 @@ const Welcome = ({ auth_token, refresh_token }) => {
       const data = await res.json()
 
       if (data.must_change_password) {
+        rememberLoginDestination(loginDestination(next))
         router.replace('/change-password')
       } else {
-        router.replace('/dashboard')
+        router.replace(loginDestination(next, true))
       }
     }
 
@@ -52,6 +55,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     props: {
       auth_token,
       refresh_token,
+      next: safeDashboardTarget(context.query.next),
     },
   }
 }

@@ -49,6 +49,19 @@ async function main() {
     `export default function Image(props) { return <img {...props} src="data:image/png;base64,${logo}" /> }`,
   )
   fs.writeFileSync(
+    path.join(temporary, 'launch-fixture.ts'),
+    `
+    import { startDesktopLaunch as realLaunch } from ${JSON.stringify(path.join(root, 'src/utils/desktop-launch.cjs'))}
+    export function startDesktopLaunch(options) {
+      return realLaunch({ ...options, win: {
+        addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window),
+        setTimeout: window.setTimeout.bind(window), clearTimeout: window.clearTimeout.bind(window),
+        location: { assign: url => { window.__lastDesktopProtocol = url }, replace: url => window.location.replace(url) }
+      } })
+    }
+  `,
+  )
+  fs.writeFileSync(
     path.join(temporary, 'entry.tsx'),
     `
     import { createRoot } from 'react-dom/client'
@@ -57,8 +70,13 @@ async function main() {
       path.join(root, 'src/components/DesktopDownloadAnnouncement'),
     )}
     import { resetDesktopAnnouncement } from ${JSON.stringify(path.join(root, 'src/utils/desktop-announcement'))}
+    import { NotificationLinkLauncher } from ${JSON.stringify(
+      path.join(root, 'src/components/NotificationLinkLauncher'),
+    )}
     function Preview() {
       const [version, setVersion] = useState(0)
+      if (location.pathname === '/open') return <NotificationLinkLauncher target={new URLSearchParams(location.search).get('target')} />
+      if (location.pathname.startsWith('/dashboard')) return <h1>Notification destination: {location.pathname + location.search}</h1>
       return <><main style={{padding:40,minHeight:'100vh',background:'#f7f8fa'}}>
         <p style={{color:'#e56f00',fontSize:12,fontWeight:700}}>SIM PUSKAPA</p>
         <h1 style={{fontSize:30,fontWeight:600,marginTop:24}}>Main dashboard</h1>
@@ -80,7 +98,10 @@ async function main() {
     outfile: path.join(temporary, 'popup.js'),
     tsconfig: path.join(root, 'tsconfig.json'),
     nodePaths: [path.join(temporary, 'node_modules')],
-    alias: { 'next/image': path.join(temporary, 'image.tsx') },
+    alias: {
+      'next/image': path.join(temporary, 'image.tsx'),
+      '@/utils/desktop-launch.cjs': path.join(temporary, 'launch-fixture.ts'),
+    },
   })
   esbuild.stop()
   fs.copyFileSync(path.join(root, 'tailwind.config.js'), path.join(temporary, 'tailwind.config.cjs'))
@@ -122,6 +143,8 @@ async function main() {
     await page.route('https://sim.puskapa.org/**', async (route) => {
       const filename = {
         '/browser-ui-qa': 'index.html',
+        '/open': 'index.html',
+        '/dashboard/aar/123': 'index.html',
         '/global.css': 'global.css',
         '/modern.css': 'modern.css',
         '/popup.css': 'popup.css',
@@ -183,8 +206,41 @@ async function main() {
       0,
       'The desktop client must never show the browser announcement',
     )
+    await page.goto('https://sim.puskapa.org/open?target=%2Fdashboard%2Faar%2F123%3Fpreview%3D1')
+    await page
+      .getByRole('heading', { name: 'Notification destination: /dashboard/aar/123?preview=1', exact: true })
+      .waitFor()
+    await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].webContents.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/156.0.0.0 Safari/537.36',
+      ),
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const launcherUrl = 'https://sim.puskapa.org/open?target=%2Fdashboard%2Faar%2F123%3Fpreview%3D1'
+    await page.goto(launcherUrl)
+    await page.getByRole('heading', { name: 'Open in SIM PUSKAPA', exact: true }).waitFor()
+    const launchBounds = await page.locator('section').boundingBox()
+    assert.ok(launchBounds.width <= 545 && launchBounds.height < 700, 'The email chooser stays compact')
+    assert.match(await page.evaluate(() => window.__lastDesktopProtocol), /^simpuskapa:\/\/open\?target=/)
+    await page.getByRole('button', { name: 'Open in Desktop' }).click()
+    assert.equal(
+      await page.getByRole('link', { name: 'Continue in Browser', exact: true }).getAttribute('href'),
+      '/dashboard/aar/123?preview=1',
+    )
+    await page.screenshot({ path: path.join(output, '04-email-open-desktop.png'), animations: 'disabled' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: path.join(output, '05-email-open-mobile.png'), animations: 'disabled' })
+    await page.getByRole('link', { name: 'Continue in Browser', exact: true }).click()
+    await page
+      .getByRole('heading', { name: 'Notification destination: /dashboard/aar/123?preview=1', exact: true })
+      .waitFor()
+    await page.goto(launcherUrl)
+    await page.waitForURL('https://sim.puskapa.org/dashboard/aar/123?preview=1', { timeout: 12_000 })
+    await page
+      .getByRole('heading', { name: 'Notification destination: /dashboard/aar/123?preview=1', exact: true })
+      .waitFor()
     console.log(
-      'PASS: compact two-step modal, four installers, text-only browser dismissal, refresh/new-login behavior, responsive layout, Escape, and desktop suppression.',
+      'PASS: download modal, four installers, session dismissal, responsive layout, desktop suppression; email chooser, desktop link, manual browser choice and automatic fallback preserve the notification destination.',
     )
   } finally {
     await application.close()

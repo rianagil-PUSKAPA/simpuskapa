@@ -8,6 +8,7 @@ import { useRouter } from 'next/router'
 import { useEffect } from 'react'
 import { Controller, SubmitHandler, useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
+import { loginDestination, rememberLoginDestination } from '@/utils/post-login-destination'
 
 const Button: any = dynamic(() => import('@/components/Button').then((mod) => mod.Button))
 const Input: any = dynamic(() => import('@/components/Input').then((mod) => mod.Input))
@@ -60,7 +61,14 @@ const Login = () => {
 
         const loginData = res.data.data
 
-        router.replace(`/welcome?auth_token=${loginData.auth_token}&refresh_token=${loginData.refresh_token}`)
+        router.replace({
+          pathname: '/welcome',
+          query: {
+            auth_token: loginData.auth_token,
+            refresh_token: loginData.refresh_token,
+            next: loginDestination(router.query.next),
+          },
+        })
       })
 
       loginRes.catch(() => {
@@ -70,6 +78,10 @@ const Login = () => {
       .then(() => {})
       .catch(() => {})
   }
+
+  useEffect(() => {
+    if (router.isReady) rememberLoginDestination(router.query.next)
+  }, [router.isReady, router.query.next])
 
   useEffect(() => {
     if (APP_ENV !== 'production') {
@@ -171,7 +183,10 @@ const Login = () => {
                 )}
               </Button>
             </form>
-            <Link href={`${MAIN_URL_BE}/v1/auth/oauth/google`}>
+            <Link
+              href={`${MAIN_URL_BE}/v1/auth/oauth/google`}
+              onClick={() => rememberLoginDestination(router.query.next)}
+            >
               <Button type="button" btnType="google" size="md" className="mb-8 w-full">
                 Continue with Google Workspace
               </Button>

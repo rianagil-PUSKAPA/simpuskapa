@@ -11,6 +11,9 @@ const {
   browserUrl,
 } = require('./policy.cjs')
 const { createBrowserSignIn } = require('./browser-auth.cjs')
+const { PROTOCOL, parseDesktopProtocolUrl, safeDashboardTarget } = require(app.isPackaged
+  ? './app-links.cjs'
+  : '../src/shared/app-links.cjs')
 
 const smokeTest = !app.isPackaged && process.env.SIM_DESKTOP_SMOKE_TEST === '1'
 if (smokeTest && process.env.SIM_DESKTOP_TEST_DATA) app.setPath('userData', process.env.SIM_DESKTOP_TEST_DATA)
@@ -28,6 +31,32 @@ const windows = new Set()
 let mainWindow
 let signInAttempt
 let signInStarting = false
+let pendingTarget = process.argv.map(parseDesktopProtocolUrl).find(Boolean) || null
+
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function openDesktopLink(url) {
+  const target = parseDesktopProtocolUrl(url)
+  if (!target) return false
+  pendingTarget = target
+  if (app.isReady()) {
+    const existed = mainWindow && !mainWindow.isDestroyed()
+    focusMainWindow()
+    if (existed) void mainWindow.loadURL(new URL(target, APP_ORIGIN).href).catch(() => {})
+  }
+  return true
+}
+
+// macOS can deliver a cold-start link before app.whenReady().
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  openDesktopLink(url)
+})
 
 function openExternal(url) {
   if (isExternalUrl(url))
@@ -52,6 +81,7 @@ async function browserSignIn() {
         const url = new URL('/welcome', APP_ORIGIN)
         url.searchParams.set('auth_token', authToken)
         url.searchParams.set('refresh_token', refreshToken)
+        if (pendingTarget) url.searchParams.set('next', pendingTarget)
         mainWindow.show()
         mainWindow.focus()
         await mainWindow.loadURL(url.href)
@@ -88,6 +118,7 @@ function wireWindow(win, inheritedAppOrigin = false) {
     if (isAppUrl(url) || isAppBlob(url)) return
     event.preventDefault()
     if (trusted()) {
+      if (openDesktopLink(url)) return
       if (isGoogleSignIn(url)) void browserSignIn()
       else openExternal(url)
     }
@@ -110,6 +141,7 @@ function wireWindow(win, inheritedAppOrigin = false) {
         },
       }
     }
+    if (openDesktopLink(url)) return { action: 'deny' }
     if (isGoogleSignIn(url)) void browserSignIn()
     else openExternal(url)
     return { action: 'deny' }
@@ -136,13 +168,16 @@ function createMainWindow() {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+  win.webContents.on('did-navigate', (_event, url) => {
+    if (pendingTarget && safeDashboardTarget(url) === pendingTarget) pendingTarget = null
+  })
   win.webContents.on('did-fail-load', (_event, code, _description, url, isMainFrame) => {
     if (isMainFrame && code !== -3 && isAppUrl(url)) {
       void win.loadFile(path.join(__dirname, 'assets/offline.html')).catch(() => {})
       win.show()
     }
   })
-  if (!smokeTest) void win.loadURL(APP_ORIGIN).catch(() => {})
+  if (!smokeTest) void win.loadURL(pendingTarget ? new URL(pendingTarget, APP_ORIGIN).href : APP_ORIGIN).catch(() => {})
   else void win.loadFile(path.join(__dirname, 'assets/offline.html'))
   return win
 }
@@ -210,13 +245,14 @@ function installMenu() {
 const singleInstance = smokeTest || app.requestSingleInstanceLock()
 if (!singleInstance) app.quit()
 else {
-  app.on('second-instance', () => {
-    if (!mainWindow) createMainWindow()
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
+  app.on('second-instance', (_event, commandLine) => {
+    const link = (commandLine || []).find((value) => parseDesktopProtocolUrl(value))
+    if (link) openDesktopLink(link)
+    else if (app.isReady()) focusMainWindow()
   })
   app.whenReady().then(() => {
+    // Installers declare the handler too. Avoid registering development/test executables.
+    if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL)
     const persistentSession = session.fromPartition('persist:sim-puskapa')
     persistentSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     persistentSession.setPermissionCheckHandler(() => false)

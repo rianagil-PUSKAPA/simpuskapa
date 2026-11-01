@@ -1,11 +1,13 @@
-SIM PUSKAPA Desktop 0.1.0 is available for testing on Windows and macOS.
+SIM PUSKAPA Desktop 0.2.0 adds notification links for Windows and macOS.
 
-- Windows x64: choose the EXE installer, or the MSI package for managed installations.
-- Mac with Apple Silicon: choose the arm64 DMG.
-- Mac with Intel: choose the x64 DMG.
+- Open a SIM PUSKAPA notification email, then choose **Open in Desktop** or **Continue in Browser**.
+- Windows and macOS recognize the `simpuskapa://` link after installing this version. Your browser may ask permission to open SIM PUSKAPA.
+- The original notification destination is preserved through sign-in, including Google Workspace sign-in.
+- If the app cannot be opened, the launch page continues in the browser. Browsers cannot reliably report whether an app is installed; a browser link is always available.
+- Existing version 0.1.0 users must install this update to enable notification links. Desktop binary auto-update is not enabled.
 
-The app connects to https://sim.puskapa.org and uses the same account, data, and access permissions as the browser version. An internet connection is required.
+Windows x64: choose the EXE installer or MSI. Mac: choose arm64 for Apple Silicon or x64 for Intel.
 
-This is a preview release. Windows installers are unsigned and Mac applications are ad-hoc signed without Apple notarization. Your operating system may warn about or block installation. SHA-256 checksums are included.
+The app connects to https://sim.puskapa.org with the same account, data, and access permissions as the browser. An internet connection is required. The website and email transport must be deployed before new notification emails include the launch page.
 
-Email/password sign-in uses the existing website. Google Workspace sign-in in the desktop app requires the desktop connection pages to be deployed on sim.puskapa.org. Automatic desktop binary updates are not enabled in this version.
+This is a preview release. Windows installers are unsigned; Mac applications are ad-hoc signed without Apple notarization. Operating system installation warnings may appear. SHA-256 checksums are included.

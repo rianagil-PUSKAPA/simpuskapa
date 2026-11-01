@@ -42,6 +42,29 @@ test(
         true,
       )
 
+      // Windows delivers warm-start protocol URLs via second-instance argv.
+      await application.evaluate(({ app }) =>
+        app.emit('second-instance', {}, [
+          'SIM PUSKAPA.exe',
+          '--unrelated-flag',
+          'simpuskapa://open?target=%2Fdashboard%2Faar%2F123%3Fpreview%3D1',
+        ]),
+      )
+      await page.waitForURL('https://sim.puskapa.org/dashboard/aar/123?preview=1')
+      // macOS delivers links via open-url, including when the app is already open.
+      await application.evaluate(({ app }) =>
+        app.emit(
+          'open-url',
+          { preventDefault() {} },
+          'simpuskapa://open?target=%2Fdashboard%2Fproject%2F123%3Ftab%3Dbudget-needs',
+        ),
+      )
+      await page.waitForURL('https://sim.puskapa.org/dashboard/project/123?tab=budget-needs')
+      await application.evaluate(({ app }) =>
+        app.emit('open-url', { preventDefault() {} }, 'simpuskapa://open?target=https%3A%2F%2Fevil.test%2Fdashboard'),
+      )
+      assert.equal(page.url(), 'https://sim.puskapa.org/dashboard/project/123?tab=budget-needs')
+
       const popupEvent = application.waitForEvent('window')
       const opened = await page.evaluate(() => {
         const popup = window.open('', '_blank')
