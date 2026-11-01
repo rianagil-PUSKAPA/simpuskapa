@@ -5,6 +5,16 @@ on:
     branches: [trunk, 'feature/desktop-*']
     paths:
       - 'desktop/**'
+      - 'src/shared/app-links.cjs'
+      - 'src/utils/desktop-launch.cjs'
+      - 'src/utils/post-login-destination.ts'
+      - 'src/components/NotificationLinkLauncher*'
+      - 'src/pages/open.tsx'
+      - 'src/middleware.ts'
+      - 'src/pages/login.tsx'
+      - 'src/pages/change-password.tsx'
+      - 'src/server/commands/mail.transporter.ts'
+      - 'deployment/apply-email-desktop-links.py'
       - 'src/pages/desktop/**'
       - 'src/pages/api/desktop/**'
       - 'src/components/DesktopDownloadAnnouncement*'
@@ -69,7 +79,7 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm run test:smoke
-      - name: Check the browser download announcement
+      - name: Check desktop download and email link pages
         if: matrix.platform == 'Windows-x64'
         run: node scripts/browser-ui-qa.cjs
       - name: Upload browser UI previews
@@ -85,7 +95,7 @@ jobs:
         run: node scripts/checksums.cjs
       - uses: actions/upload-artifact@v4
         with:
-          name: SIM-PUSKAPA-Desktop-0.1.0-preview-${{ matrix.platform }}
+          name: SIM-PUSKAPA-Desktop-0.2.0-preview-${{ matrix.platform }}
           path: |
             desktop/dist/*.exe
             desktop/dist/*.msi
@@ -105,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: SIM-PUSKAPA-Desktop-0.1.0-preview-*
+          pattern: SIM-PUSKAPA-Desktop-0.2.0-preview-*
           path: desktop/dist
           merge-multiple: true
       - name: Generate combined installer checksums
@@ -115,14 +125,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          release_tag='v0.1.0-preview.1'
+          release_tag='v0.2.0-preview.1'
           if gh release view "$release_tag" >/dev/null 2>&1; then
             echo 'The preview is already published; preserving its installer files.'
           else
             gh release create "$release_tag" \
               --target "$GITHUB_SHA" \
               --prerelease \
-              --title 'SIM PUSKAPA Desktop 0.1.0 (Preview)' \
+              --title 'SIM PUSKAPA Desktop 0.2.0 (Preview)' \
               --notes-file desktop/RELEASE_NOTES.md \
               desktop/dist/*.exe desktop/dist/*.msi desktop/dist/*.dmg desktop/dist/SHA256SUMS.txt
           fi

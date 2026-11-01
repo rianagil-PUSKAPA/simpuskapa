@@ -3,10 +3,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { JwtLib } from '@/shared/jwt.lib'
 import { MAIN_URL_BE } from './utils/constant'
+import { safeDashboardTarget } from './shared/app-links.cjs'
 
 export async function middleware(request: NextRequest) {
   const authToken = request.cookies.get('auth_token')?.value
   const refreshToken = request.cookies.get('refresh_token')?.value
+  const loginUrl = new URL('/login', request.url)
+  const next = safeDashboardTarget(request.nextUrl.pathname + request.nextUrl.search)
+  if (next) loginUrl.searchParams.set('next', next)
 
   // console.log('middleware running')
 
@@ -54,14 +58,14 @@ export async function middleware(request: NextRequest) {
         request.cookies.set(refreshTokenCookie)
         return response
       } catch (error) {
-        const response = NextResponse.redirect(new URL('/login', request.url))
+        const response = NextResponse.redirect(loginUrl)
         response.cookies.delete('auth_token')
         response.cookies.delete('refresh_token')
         return response
       }
     }
   } else {
-    const response = NextResponse.redirect(new URL('/login', request.url))
+    const response = NextResponse.redirect(loginUrl)
     response.cookies.delete('auth_token')
     response.cookies.delete('refresh_token')
     return response
