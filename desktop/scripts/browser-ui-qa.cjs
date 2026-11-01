@@ -110,15 +110,26 @@ async function main() {
   const application = await electron.launch({ args: [path.join(root, 'desktop')], env })
   try {
     const page = await application.firstWindow()
+    await page.waitForURL('**/offline.html', { waitUntil: 'load' })
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].webContents.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/156.0.0.0 Safari/537.36',
       ),
     )
-    await application.evaluate(
-      ({ BrowserWindow }, filename) => BrowserWindow.getAllWindows()[0].loadFile(filename),
-      path.join(temporary, 'index.html'),
-    )
+    // Serve the fixture through the same mocked HTTPS origin as the existing desktop smoke test.
+    // This also exercises normal browser sessionStorage instead of file-URL storage semantics.
+    await page.route('https://sim.puskapa.org/**', async (route) => {
+      const filename = {
+        '/browser-ui-qa': 'index.html',
+        '/global.css': 'global.css',
+        '/modern.css': 'modern.css',
+        '/popup.css': 'popup.css',
+        '/popup.js': 'popup.js',
+      }[new URL(route.request().url()).pathname]
+      if (!filename) return route.fulfill({ status: 404, body: '' })
+      await route.fulfill({ path: path.join(temporary, filename) })
+    })
+    await page.goto('https://sim.puskapa.org/browser-ui-qa')
     const modal = page.getByRole('dialog')
     await modal.waitFor({ state: 'attached' })
     await page.getByRole('heading', { name: 'SIM PUSKAPA, now on desktop.' }).waitFor()
