@@ -8,33 +8,33 @@ The **SIM PUSKAPA Desktop installers** Actions workflow generates:
 
 | Computer                 | Installer                                                  |
 | ------------------------ | ---------------------------------------------------------- |
-| Windows x64              | `SIM-PUSKAPA-0.3.0-beta.1-Windows-x64-Setup.exe` or `.msi` |
-| Mac with Intel processor | `SIM-PUSKAPA-0.3.0-beta.1-macOS-x64.dmg`                   |
-| Mac with Apple Silicon   | `SIM-PUSKAPA-0.3.0-beta.1-macOS-arm64.dmg`                 |
+| Windows x64              | `SIM-PUSKAPA-0.3.0-beta.2-Windows-x64-Setup.exe` or `.msi` |
+| Mac with Intel processor | `SIM-PUSKAPA-0.3.0-beta.2-macOS-x64.dmg`                   |
+| Mac with Apple Silicon   | `SIM-PUSKAPA-0.3.0-beta.2-macOS-arm64.dmg`                 |
 
 Open the successful run in GitHub → Actions, download its **Artifacts**, unzip the download, and choose the installer for your computer. Each artifact also contains `SHA256SUMS.txt`. Artifacts expire after 30 days.
 
 Branch builds are **preview builds**: Windows installers are unsigned and Mac applications are ad-hoc signed, without Apple notarization. Operating systems may warn about or block these previews. Prepare organizational signing certificates and Apple notarization before distributing the application broadly.
 
-After the change is merged into `trunk` and all native checks pass, the workflow publishes the four installers and combined checksums as the public prerelease `v0.3.0-beta.1`. The browser's download buttons link directly to those files, without requiring a GitHub account. Reruns preserve an existing release. The workflow does not deploy the production website.
+After the change is merged into `trunk` and all native checks pass, the workflow publishes the four installers and combined checksums as the public prerelease `v0.3.0-beta.2`. The browser's download buttons link directly to those files, without requiring a GitHub account. Reruns preserve an existing release. The workflow does not deploy the production website.
 
 ## Browser announcement
 
 After a successful sign-in, the main browser dashboard shows a compact announcement using the existing SIM PUSKAPA modal, button, logo, and modern orange theme. **Download SIM PUSKAPA** switches to Windows/macOS choices; **Stay on browser**, Close, Escape, and clicking the backdrop dismiss the modal. It stays dismissed while navigating or refreshing in that browser tab, and a new sign-in resets the announcement. The Electron desktop client does not show it.
 
-The selector offers Windows EXE/MSI and macOS Apple Silicon/Intel DMG files. Download links are defined in `src/config/desktop-release.ts`. The preview label and installation notice remain visible.
+The selector offers Windows EXE/MSI and macOS Apple Silicon/Intel DMG files. Download links, version and publisher status are read from `/api/desktop/releases` at runtime. `src/config/desktop-release.ts` supplies last-known links if the release service is unavailable. The popup labels the latest installer separately from the installed desktop version.
 
 ## Automatic updates
 
-Desktop 0.3.0-beta.1 adds automatic update downloads for Windows EXE/NSIS, followed by **Restart to Update** / **Later**. **Help → Check for Updates** is available. Mac previews and MSI installations offer manual download; automatic Mac installation requires proper Apple signing. See [AUTO_UPDATES.md](AUTO_UPDATES.md) for rollout, release channels, signing and test limits.
+Desktop 0.3.0-beta.2 adds automatic update downloads for Windows EXE/NSIS, followed by **Restart to Update** / **Later**. **Help → Check for Updates** is available. Mac previews and MSI installations offer manual download; automatic Mac installation requires proper Apple signing. See [AUTO_UPDATES.md](AUTO_UPDATES.md) for rollout, release channels, signing and test limits.
 
 ## Notification email links
 
-Desktop 0.2.0 and later register `simpuskapa://` on Windows (EXE/MSI) and macOS. New notification emails offer **Open in Desktop** and **Continue in Browser**, preserving the dashboard destination through sign-in. Browser installation detection is best effort, with a timed browser fallback. Existing Desktop 0.1.0/0.2.0 users install the latest 0.3.0-beta.1 build manually once to receive the updater. See [EMAIL_LINKS.md](EMAIL_LINKS.md) for behavior, limitations, and acceptance checks.
+Desktop 0.2.0 and later register `simpuskapa://` on Windows (EXE/MSI) and macOS. New notification emails offer **Open in Desktop** and **Continue in Browser**, preserving the dashboard destination through sign-in. Browser installation detection is best effort, with a timed browser fallback. Existing Desktop 0.1.0/0.2.0 users install the latest 0.3.0-beta.2 build manually once to receive the updater. See [EMAIL_LINKS.md](EMAIL_LINKS.md) for behavior, limitations, and acceptance checks.
 
 ## Apply the latest email links and download URLs to EC2
 
-After publishing the four 0.3.0-beta.1 installers, run `deployment/apply-email-desktop-links.py <merged-commit-sha>` from the existing EC2 project folder. This update rebuilds **both frontend and backend**, since the backend creates notification email URLs. The helper merges local edits, stages both builds, backs up source/builds, and rolls back failed switches or public checks. It preserves remotes, the checked-out branch and Git index; it runs no migrations, installs no dependencies and sends no test emails. [Deployment details](EMAIL_LINKS.md#deployment).
+After publishing the four 0.3.0-beta.2 installers, run `deployment/apply-email-desktop-links.py <merged-commit-sha>` from the existing EC2 project folder. This update rebuilds **both frontend and backend**, since the backend creates notification email URLs. The helper merges local edits, stages both builds, backs up source/builds, and rolls back failed switches or public checks. It preserves remotes, the checked-out branch and Git index; it runs no migrations, installs no dependencies and sends no test emails. [Deployment details](EMAIL_LINKS.md#deployment).
 
 ## Original Desktop 0.1.0 setup
 
@@ -103,7 +103,7 @@ The listener expires after five minutes; an encrypted transfer expires after one
 - File selection/upload uses the existing HTML controls. Real authenticated uploads, production role-specific forms, and each Windows/macOS print dialog still require acceptance testing with a test account.
 - Losing the connection shows a retry page. Transactions require internet; offline edits and synchronization are not implemented.
 - The desktop session persists in the OS application data directory, separately from browser sessions. Use the website's normal Logout action to end the session.
-- Web updates are received from the server. Changes to Electron or the desktop shell require a new installer; Windows NSIS builds from 0.3.0-beta.1 support automatic download with an explicit restart choice; see [AUTO_UPDATES.md](AUTO_UPDATES.md).
+- Web updates are received from the server. Changes to Electron or the desktop shell require a new installer; Windows NSIS builds from 0.3.0-beta.2 support automatic download with an explicit restart choice; see [AUTO_UPDATES.md](AUTO_UPDATES.md).
 
 ## Signed distribution
 

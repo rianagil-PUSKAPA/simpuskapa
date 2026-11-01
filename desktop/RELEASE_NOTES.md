@@ -1,12 +1,11 @@
-SIM PUSKAPA Desktop 0.3.0-beta.1 adds desktop update checking.
+SIM PUSKAPA Desktop 0.3.0-beta.2 keeps desktop update checking and adds release information for the website.
 
-- Windows EXE/NSIS installations check for new releases after startup and every four hours, downloading updates in the background.
-- When an update is ready, choose **Restart to Update** or **Later**. Updates never install automatically when quitting or shutting down.
-- Use **Help → Check for Updates** to check manually or reopen a deferred update.
-- Mac preview and Windows MSI installations notify you about new releases and offer **Download Update**. Automatic Mac installation requires a properly signed/notarized release; current Mac previews remain ad-hoc signed.
-- Existing 0.1.0/0.2.0 users must install this version manually once. For automatic Windows updates, use the EXE installer.
-- Notification email links, printing, downloads and browser sign-in remain available.
+- The browser download popup reads the latest complete published release at runtime. Version text, Windows/macOS installer links and the email launch-page download link follow the current release without an EC2 rebuild for every new desktop version.
+- The popup distinguishes the latest installer from the version installed on a computer. If GitHub cannot be reached, it labels the last available download instead of claiming it is current.
+- Publisher status comes from release metadata. The previous generic security-warning sentence is replaced by a specific signing status and a link to release notes.
+- Windows EXE/NSIS keeps automatic background downloads with **Restart to Update** / **Later**. Mac previews and MSI keep manual downloads; Mac automatic installation requires proper Apple signing.
+- Existing Desktop 0.3.0-beta.1 EXE users can receive this release through the updater. Older versions need a one-time manual installation.
 
-Install the Windows x64 EXE/MSI, macOS Apple Silicon arm64 DMG, or Intel x64 DMG. ZIPs, blockmaps and YAML files are update-system assets; users normally choose EXE or DMG. The app uses the same SIM PUSKAPA account, data and permissions and requires internet.
+Signing for this release: Windows installers are {{WINDOWS_SIGNING}}; Mac applications are {{MAC_SIGNING}}. Signing identifies a publisher; it is not an antivirus scan result. Functional tests and checksums do not certify that a file is free of all malware.
 
-This beta release uses the beta update channel and can receive later beta releases and stable releases. Windows preview binaries are unsigned; Mac previews are ad-hoc signed without notarization. Operating system installation warnings may appear. SHA256SUMS.txt covers installers and update assets.
+Choose Windows x64 EXE/MSI, Apple Silicon arm64 DMG or Intel x64 DMG. ZIPs, blockmaps and YAML files support the update system. SHA256SUMS.txt covers installers and update files. An internet connection is required.

@@ -19,9 +19,11 @@ from urllib.request import Request, urlopen
 
 SOURCE = "https://github.com/rianagil-PUSKAPA/simpuskapa.git"
 BASE = "caf43d4ea574310007b6ae03f08e324a00be177a"
-VERSION = "0.3.0-beta.1"
+VERSION = "0.3.0-beta.2"
 RELEASE = "https://github.com/rianagil-PUSKAPA/simpuskapa/releases/download/v" + VERSION
 FILES = [
+    "src/shared/desktop-releases.cjs", "src/utils/use-desktop-release.ts",
+    "src/pages/api/desktop/releases.ts", "src/components/DesktopDownloadAnnouncement.tsx",
     "src/shared/app-links.cjs", "src/utils/desktop-launch.cjs",
     "src/utils/post-login-destination.ts", "src/pages/open.tsx",
     "src/components/NotificationLinkLauncher.tsx",
@@ -96,15 +98,23 @@ def merge_source(root, stage, name, incoming):
     if name == "src/config/desktop-release.ts":
         # Known release configurations can be upgraded without conflicting with
         # a previous application of this helper. Other local edits still merge.
-        for commit in [BASE, "8a7c16eda2f209762eeb2742713a7a4a819fc543"]:
+        for commit in [BASE, "8a7c16eda2f209762eeb2742713a7a4a819fc543", "bc45a0151f9e2f71577e9d9cd57d076b8d1c9c75"]:
             previous = subprocess.run(["git", "show", commit + ":" + name], cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             if previous.returncode == 0 and current == previous.stdout:
                 return incoming
     base = subprocess.run(["git", "show", BASE + ":" + name], cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if base.returncode:
-        if current is not None and current != incoming:
+        if current is None or current == incoming:
+            return incoming
+        # Notification launcher files were introduced after the initial desktop
+        # release; use their last deployed baseline to preserve local edits.
+        for commit in ["bc45a0151f9e2f71577e9d9cd57d076b8d1c9c75", "8a7c16eda2f209762eeb2742713a7a4a819fc543"]:
+            candidate = subprocess.run(["git", "show", commit + ":" + name], cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            if candidate.returncode == 0:
+                base = candidate
+                break
+        if base.returncode:
             raise RuntimeError("A new feature file already has different local content: " + name)
-        return incoming
     if current is None:
         raise RuntimeError("Existing source file is missing: " + name)
     paths = [stage / "merge-current", stage / "merge-base", stage / "merge-incoming"]
@@ -126,6 +136,10 @@ def public_check():
             with urlopen(req, timeout=5) as response:
                 if response.status != 200 or b"Open in SIM PUSKAPA" not in response.read(250000):
                     raise ValueError("Launch page is not ready")
+            with urlopen("https://sim.puskapa.org/api/desktop/releases", timeout=8) as response:
+                metadata = json.loads(response.read(250000))
+                if response.status != 200 or not metadata.get("release", {}).get("windows", {}).get("exe", "").startswith("https://github.com/rianagil-PUSKAPA/simpuskapa/releases/download/"):
+                    raise ValueError("Runtime release endpoint is not ready")
             try:
                 urlopen("https://api.sim.puskapa.org/v1/users", timeout=5).close()
                 raise ValueError("Expected an unauthenticated API response")
