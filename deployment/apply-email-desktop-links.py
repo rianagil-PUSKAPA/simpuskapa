@@ -19,7 +19,8 @@ from urllib.request import Request, urlopen
 
 SOURCE = "https://github.com/rianagil-PUSKAPA/simpuskapa.git"
 BASE = "caf43d4ea574310007b6ae03f08e324a00be177a"
-RELEASE = "https://github.com/rianagil-PUSKAPA/simpuskapa/releases/download/v0.2.0-preview.1"
+VERSION = "0.3.0-beta.1"
+RELEASE = "https://github.com/rianagil-PUSKAPA/simpuskapa/releases/download/v" + VERSION
 FILES = [
     "src/shared/app-links.cjs", "src/utils/desktop-launch.cjs",
     "src/utils/post-login-destination.ts", "src/pages/open.tsx",
@@ -92,6 +93,13 @@ def normalize_welcome(name, data):
 
 def merge_source(root, stage, name, incoming):
     current = (root / name).read_bytes() if (root / name).exists() else None
+    if name == "src/config/desktop-release.ts":
+        # Known release configurations can be upgraded without conflicting with
+        # a previous application of this helper. Other local edits still merge.
+        for commit in [BASE, "8a7c16eda2f209762eeb2742713a7a4a819fc543"]:
+            previous = subprocess.run(["git", "show", commit + ":" + name], cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            if previous.returncode == 0 and current == previous.stdout:
+                return incoming
     base = subprocess.run(["git", "show", BASE + ":" + name], cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if base.returncode:
         if current is not None and current != incoming:
@@ -147,9 +155,9 @@ def main():
     print("PM2 frontend:", frontend, "; backend:", backend, "; backend build:", backend_build, flush=True)
     before = [capture(args, root) for args in [["git", "rev-parse", "HEAD"], ["git", "remote", "-v"], ["git", "rev-parse", "--abbrev-ref", "HEAD"]]]
     for suffix in INSTALLERS:
-        with urlopen(Request(RELEASE + "/SIM-PUSKAPA-0.2.0-" + suffix, method="HEAD"), timeout=30) as response:
+        with urlopen(Request(RELEASE + "/SIM-PUSKAPA-" + VERSION + "-" + suffix, method="HEAD"), timeout=30) as response:
             if response.status != 200 or "text/html" in response.headers.get("Content-Type", ""):
-                raise RuntimeError("Wait for the four 0.2.0 release installers to finish publishing.")
+                raise RuntimeError("Wait for the four " + VERSION + " release installers to finish publishing.")
     subprocess.run(["git", "fetch", "--no-tags", SOURCE, "trunk"], cwd=str(root), check=True)
     commit = sys.argv[1] if len(sys.argv) > 1 else capture(["git", "rev-parse", "FETCH_HEAD"], root)
     if not re.fullmatch(r"[a-f0-9]{40}", commit):
@@ -218,7 +226,7 @@ def main():
         if before != after:
             raise RuntimeError("Git configuration changed during deployment; inspect it before proceeding.")
         print("SUCCESS: desktop email links deployed. Backup:", backup, flush=True)
-        print("New notification emails now use the desktop/browser launch page. Install Desktop 0.2.0 to open them in the app.", flush=True)
+        print("New email links and the latest desktop downloads are deployed. Install Desktop " + VERSION + " once to enable its updater.", flush=True)
     except BaseException:
         if stopped:
             print("Restoring previous source and both application builds...", flush=True)

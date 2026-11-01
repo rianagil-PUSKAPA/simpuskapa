@@ -11,6 +11,7 @@ const {
   browserUrl,
 } = require('./policy.cjs')
 const { createBrowserSignIn } = require('./browser-auth.cjs')
+const { createDesktopUpdater } = require('./updates.cjs')
 const { PROTOCOL, parseDesktopProtocolUrl, safeDashboardTarget } = require(app.isPackaged
   ? './app-links.cjs'
   : '../src/shared/app-links.cjs')
@@ -32,6 +33,22 @@ let mainWindow
 let signInAttempt
 let signInStarting = false
 let pendingTarget = process.argv.map(parseDesktopProtocolUrl).find(Boolean) || null
+const desktopUpdates = createDesktopUpdater({
+  app,
+  dialog,
+  shell,
+  settings: require('./package.json').simDesktopUpdates,
+  onStatus: ({ state }) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById('desktop-update')
+    if (item)
+      item.label =
+        state === 'ready'
+          ? 'Restart to Update…'
+          : state === 'downloading'
+          ? 'Downloading Update…'
+          : 'Check for Updates…'
+  },
+})
 
 function focusMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) createMainWindow()
@@ -226,6 +243,13 @@ function installMenu() {
       label: 'Help',
       submenu: [
         {
+          id: 'desktop-update',
+          label: 'Check for Updates…',
+          click: () => {
+            void desktopUpdates.check()
+          },
+        },
+        {
           label: 'About SIM PUSKAPA',
           click: () => {
             void dialog.showMessageBox({
@@ -273,6 +297,7 @@ else {
     })
     installMenu()
     createMainWindow()
+    desktopUpdates.start()
     app.on('activate', () => {
       if (!mainWindow) createMainWindow()
       else mainWindow.show()
@@ -281,6 +306,7 @@ else {
 }
 app.on('before-quit', () => {
   signInAttempt?.cancel()
+  desktopUpdates.dispose()
 })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

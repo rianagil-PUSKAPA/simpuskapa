@@ -1,6 +1,6 @@
 {
   "name": "sim-puskapa-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0-beta.1",
   "description": "SIM PUSKAPA desktop client for Windows and macOS",
   "author": "PUSKAPA",
   "private": true,
@@ -14,15 +14,20 @@
     "test": "node --test test/*.test.cjs",
     "test:smoke": "node --test test/electron.smoke.cjs",
     "pack": "electron-builder --dir --publish never",
-    "dist:win": "electron-builder --win nsis msi --x64 --publish never",
-    "dist:mac": "electron-builder --mac dmg --x64 --arm64 --publish never"
+    "dist:win": "node scripts/check-signing.cjs win32 && electron-builder --win nsis msi --x64 --publish never",
+    "dist:mac": "node scripts/check-signing.cjs darwin && electron-builder --mac dmg zip --x64 --arm64 --publish never"
   },
   "devDependencies": {
     "electron": "45.2.1",
     "electron-builder": "26.18.0",
+    "js-yaml": "4.3.2",
     "playwright": "1.64.1",
     "prettier": "2.8.6",
     "prettier-plugin-tailwindcss": "0.2.5",
     "typescript": "4.7.4"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.12",
+    "semver": "7.8.5"
   }
 }

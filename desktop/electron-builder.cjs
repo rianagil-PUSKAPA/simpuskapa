@@ -1,4 +1,5 @@
 const signed = process.env.SIM_DESKTOP_SIGNED === 'true'
+const { channel, prerelease } = require('./scripts/release-info.cjs').releaseInfo()
 
 module.exports = {
   appId: 'org.puskapa.sim.desktop',
@@ -6,13 +7,13 @@ module.exports = {
   copyright: 'Copyright © PUSKAPA',
   asar: true,
   forceCodeSigning: signed,
+  extraMetadata: { simDesktopUpdates: { channel, macSigned: signed } },
   directories: { output: 'dist', buildResources: 'assets' },
   files: [
     '*.cjs',
     'assets/**',
     'package.json',
     '!test/**',
-    '!node_modules/**',
     { from: '../src/shared', to: '.', filter: ['app-links.cjs'] },
   ],
   protocols: [{ name: 'SIM PUSKAPA', schemes: ['simpuskapa'] }],
@@ -34,6 +35,7 @@ module.exports = {
     artifactName: 'SIM-PUSKAPA-${version}-Windows-${arch}-Setup.${ext}',
   },
   nsis: {
+    include: 'assets/installer.nsh',
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
@@ -46,12 +48,21 @@ module.exports = {
   mac: {
     icon: 'assets/icon.icns',
     category: 'public.app-category.productivity',
-    target: [{ target: 'dmg', arch: ['x64', 'arm64'] }],
+    target: [
+      { target: 'dmg', arch: ['x64', 'arm64'] },
+      { target: 'zip', arch: ['x64', 'arm64'] },
+    ],
     artifactName: 'SIM-PUSKAPA-${version}-macOS-${arch}.${ext}',
     identity: signed ? undefined : '-',
     hardenedRuntime: signed,
     notarize: signed,
   },
   dmg: { title: 'SIM PUSKAPA ${version}', sign: signed },
-  publish: null,
+  publish: {
+    provider: 'github',
+    owner: 'rianagil-PUSKAPA',
+    repo: 'simpuskapa',
+    releaseType: prerelease ? 'prerelease' : 'release',
+    channel,
+  },
 }
