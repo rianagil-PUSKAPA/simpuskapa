@@ -82,6 +82,7 @@ async function main() {
     nodePaths: [path.join(temporary, 'node_modules')],
     alias: { 'next/image': path.join(temporary, 'image.tsx') },
   })
+  esbuild.stop()
   fs.copyFileSync(path.join(root, 'tailwind.config.js'), path.join(temporary, 'tailwind.config.cjs'))
   execFileSync(
     process.execPath,
@@ -119,7 +120,7 @@ async function main() {
       path.join(temporary, 'index.html'),
     )
     const modal = page.getByRole('dialog')
-    await modal.waitFor()
+    await modal.waitFor({ state: 'attached' })
     await page.getByRole('heading', { name: 'SIM PUSKAPA, now on desktop.' }).waitFor()
     const panel = page.locator('[id^="headlessui-dialog-panel-"]')
     const bounds = await panel.boundingBox()
@@ -143,19 +144,20 @@ async function main() {
     assert.match(await page.getByRole('link', { name: 'Download for macOS' }).getAttribute('href'), /x64\.dmg$/)
     await page.screenshot({ path: path.join(output, '02-download-options-desktop.png'), animations: 'disabled' })
     await page.getByRole('button', { name: 'Stay on browser' }).click()
-    await modal.waitFor({ state: 'hidden' })
+    await modal.waitFor({ state: 'detached' })
     await page.getByRole('heading', { name: 'Main dashboard' }).waitFor()
     await page.reload()
     assert.equal(await page.getByRole('dialog').count(), 0, 'Reload must keep the popup dismissed')
 
     await page.getByRole('button', { name: 'Simulate new sign-in' }).click()
-    await modal.waitFor()
+    await modal.waitFor({ state: 'attached' })
+    await page.getByRole('heading', { name: 'SIM PUSKAPA, now on desktop.' }).waitFor()
     await page.setViewportSize({ width: 390, height: 844 })
     const mobileBounds = await panel.boundingBox()
     assert.ok(mobileBounds.x >= 0 && mobileBounds.x + mobileBounds.width <= 391, 'The mobile layout must not overflow')
     await page.screenshot({ path: path.join(output, '03-announcement-mobile.png'), animations: 'disabled' })
     await page.keyboard.press('Escape')
-    await modal.waitFor({ state: 'hidden' })
+    await modal.waitFor({ state: 'detached' })
 
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].webContents.setUserAgent(
@@ -183,5 +185,9 @@ main()
     process.exitCode = 1
   })
   .finally(() => {
-    fs.rmSync(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    try {
+      fs.rmSync(temporary, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+    } catch {
+      console.warn('The runner will remove the temporary UI check directory during job cleanup.')
+    }
   })
