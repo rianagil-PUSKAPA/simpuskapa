@@ -34,7 +34,13 @@ test(
       assert.equal(preferences.sandbox, true)
       assert.equal(preferences.contextIsolation, true)
       assert.equal(preferences.nodeIntegration, false)
-      assert.equal(preferences.partition, 'persist:sim-puskapa')
+      assert.equal(
+        await application.evaluate(({ BrowserWindow, session }) => {
+          const actual = BrowserWindow.getAllWindows()[0].webContents.session
+          return actual === session.fromPartition('persist:sim-puskapa') && actual.isPersistent()
+        }),
+        true,
+      )
 
       const popupEvent = application.waitForEvent('window')
       const opened = await page.evaluate(() => {
