@@ -1,4 +1,5 @@
 import { resolveAuthToken } from '@/utils/ssrAuth'
+import { DesktopDownloadAnnouncement } from '@/components/DesktopDownloadAnnouncement'
 import { ArrowRightIcon } from '@/components/icon/ArrowRightIcon'
 import { BankNote01Icon } from '@/components/icon/BankNote01Icon'
 import { CalendarIcon } from '@/components/icon/CalendarIcon'
@@ -221,6 +222,7 @@ const DashboardIndex = ({ log }: Props) => {
   return (
     <>
       <NextSeo title="Dashboard" canonical={`${MAIN_URL_FE}dashboard`} />
+      <DesktopDownloadAnnouncement userId={userLoggedinInformation?.id} />
       <Dashboard breadcrumbLists={[{ title: 'Home', url: '' }]}>
         <div className="sim-modern-home p-5 md:p-7 xl:p-10">
           <div className="sim-home-welcome-row mb-8">

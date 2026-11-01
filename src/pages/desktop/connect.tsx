@@ -47,10 +47,10 @@ export default function DesktopConnect({ handshake }: Props) {
         <meta name="robots" content="noindex, nofollow" />
         <meta name="referrer" content="no-referrer" />
       </Head>
-      <div className="flex min-h-screen items-center justify-center bg-orange-50 px-6 py-12">
-        <div className="w-full max-w-lg rounded-2xl border border-orange-100 bg-white p-8 shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-primary-25 px-6 py-12">
+        <div className="w-full max-w-lg rounded-2xl border border-primary-100 bg-white p-8 shadow-sm">
           <Image src="/images/logo-simpuskapa.png" width={80} height={80} alt="SIM PUSKAPA" />
-          <p className="mb-3 mt-6 text-xs font-bold uppercase tracking-widest text-orange-600">SIM PUSKAPA Desktop</p>
+          <p className="mb-3 mt-6 text-xs font-bold uppercase tracking-widest text-primary-600">SIM PUSKAPA Desktop</p>
           <h1 className="mb-4 text-2xl font-semibold text-gray-900">Connect your desktop application</h1>
           {handshake ? (
             <>
@@ -65,7 +65,7 @@ export default function DesktopConnect({ handshake }: Props) {
                 href="/login"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mb-6 inline-flex rounded-lg border border-orange-200 px-5 py-3 font-semibold text-orange-700"
+                className="mb-6 inline-flex rounded-lg border border-primary-200 px-5 py-3 font-semibold text-primary-700"
               >
                 Sign in to SIM PUSKAPA
               </a>
@@ -74,12 +74,12 @@ export default function DesktopConnect({ handshake }: Props) {
                 type="button"
                 onClick={connect}
                 disabled={busy}
-                className="w-full rounded-lg bg-orange-600 px-5 py-3 font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
+                className="w-full rounded-lg bg-primary-600 px-5 py-3 font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
               >
                 {busy ? 'Connecting…' : 'Connect to Desktop'}
               </button>
               {error && (
-                <p role="alert" className="mt-4 text-sm text-red-600">
+                <p role="alert" className="mt-4 text-sm text-error-600">
                   {error}
                 </p>
               )}

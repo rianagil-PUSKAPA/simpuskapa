@@ -14,7 +14,23 @@ The **SIM PUSKAPA Desktop installers** Actions workflow generates:
 
 Open the successful run in GitHub → Actions, download its **Artifacts**, unzip the download, and choose the installer for your computer. Each artifact also contains `SHA256SUMS.txt`. Artifacts expire after 30 days.
 
-Branch builds are **preview builds**: Windows installers are unsigned and Mac applications are ad-hoc signed, without Apple notarization. Operating systems may warn about or block these previews. Prepare organizational signing certificates and Apple notarization before distributing the application broadly. This workflow does not publish releases or deploy the production website.
+Branch builds are **preview builds**: Windows installers are unsigned and Mac applications are ad-hoc signed, without Apple notarization. Operating systems may warn about or block these previews. Prepare organizational signing certificates and Apple notarization before distributing the application broadly.
+
+After the change is merged into `trunk` and all native checks pass, the workflow publishes the four installers and combined checksums as the public prerelease `v0.1.0-preview.1`. The browser's download buttons link directly to those files, without requiring a GitHub account. Reruns preserve an existing release. The workflow does not deploy the production website.
+
+## Browser announcement
+
+After a successful sign-in, the main browser dashboard shows a compact announcement using the existing SIM PUSKAPA modal, button, logo, and modern orange theme. **Download SIM PUSKAPA** switches to Windows/macOS choices; **Stay on browser**, Close, Escape, and clicking the backdrop dismiss the modal. It stays dismissed while navigating or refreshing in that browser tab, and a new sign-in resets the announcement. The Electron desktop client does not show it.
+
+The selector offers Windows EXE/MSI and macOS Apple Silicon/Intel DMG files. Download links are defined in `src/config/desktop-release.ts`. The preview label and installation notice remain visible.
+
+## Apply to the existing EC2 project
+
+The source changes can be applied with `deployment/apply-desktop-release.py`, run from the existing production project directory with a full source commit SHA as its argument. It fetches the source using the explicit GitHub URL, preserving the existing remotes, branch, and index. It adds the new files and patches only the dashboard component insertion and welcome-page announcement reset in the current EC2 source, preserving other local revisions.
+
+Before editing, the helper checks that the four public installers are available and identifies the PM2 frontend by its working directory and command/name. If necessary, set `SIM_PUSKAPA_FRONTEND` to its exact PM2 name. Watch mode and ambiguous process selections cause a stop before source changes.
+
+The helper backs up affected source files, formats and type-checks them, builds the frontend in a private staging directory, and switches `.next` only after a successful build. It restarts only the selected frontend and checks the public desktop connection endpoint. A failed build or health check restores the previous source/build. The private staging directory is removed; the rollback backup remains beside the project directory. No database migration or desktop dependency installation is needed on EC2.
 
 ## Run or build locally
 
@@ -86,4 +102,4 @@ The signed configuration requires code signing and macOS notarization. Credentia
 
 `npm test` exercises origin restrictions, download names, encrypted handoff integrity/expiry, the real loopback receiver, cancellation, and the Next.js endpoint's session authorization. `npm run test:smoke` launches the actual Electron application against mocked website responses, checks renderer isolation, writes a print popup, generates an A4 PDF, downloads a blob, and verifies offline recovery. CI runs this smoke test on both Windows and macOS before packaging.
 
-The rolling EC2 snapshot's root `.gitignore` ignores `.github/workflows/`. The desktop workflow is intentionally tracked as a build-only exception; use `git add -f .github/workflows/desktop-installers.yml` if recreating this change locally. Existing deployment automations remain outside this change.
+The rolling EC2 snapshot's root `.gitignore` ignores `.github/workflows/`. The desktop workflow is intentionally tracked as a desktop build/release exception; use `git add -f .github/workflows/desktop-installers.yml` if recreating this change locally. Existing deployment automations remain outside this change.
