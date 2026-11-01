@@ -119,7 +119,7 @@ def public_check():
                 if response.status != 200 or b"Open in SIM PUSKAPA" not in response.read(250000):
                     raise ValueError("Launch page is not ready")
             try:
-                urlopen("https://api.sim.puskapa.org/v1/users/me", timeout=5).close()
+                urlopen("https://api.sim.puskapa.org/v1/users", timeout=5).close()
                 raise ValueError("Expected an unauthenticated API response")
             except HTTPError as error:
                 if error.code != 401:
