@@ -13,10 +13,11 @@ module.exports = {
     'package.json',
     '!test/**',
     '!node_modules/**',
-    { from: '../src/shared/app-links.cjs', to: 'app-links.cjs' },
+    { from: '../src/shared', to: '.', filter: ['app-links.cjs'] },
   ],
   protocols: [{ name: 'SIM PUSKAPA', schemes: ['simpuskapa'] }],
   msiProjectCreated: require('./scripts/msi-protocol.cjs'),
+  afterPack: require('./scripts/verify-package.cjs'),
   electronFuses: {
     runAsNode: false,
     enableNodeOptionsEnvironmentVariable: false,

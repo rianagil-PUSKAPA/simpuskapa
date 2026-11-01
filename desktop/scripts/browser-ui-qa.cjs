@@ -122,7 +122,7 @@ async function main() {
   fs.copyFileSync(path.join(root, 'src/styles/modern-dashboard.css'), path.join(temporary, 'modern.css'))
   fs.writeFileSync(
     path.join(temporary, 'index.html'),
-    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIM PUSKAPA browser UI QA</title><link rel="stylesheet" href="global.css"><link rel="stylesheet" href="modern.css"><link rel="stylesheet" href="popup.css"><style>body{font-family:Arial,sans-serif}</style><div id="root"></div><script src="popup.js"></script></html>',
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIM PUSKAPA browser UI QA</title><link rel="stylesheet" href="/global.css"><link rel="stylesheet" href="/modern.css"><link rel="stylesheet" href="/popup.css"><style>body{font-family:Arial,sans-serif}</style><div id="root"></div><script src="/popup.js"></script></html>',
   )
 
   fs.mkdirSync(path.join(temporary, 'user-data'), { recursive: true })
