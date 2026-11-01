@@ -16,7 +16,10 @@ module.exports = async function verifyPackage({ appOutDir, electronPlatformName,
   const info = JSON.parse(asar.extractFile(archive, 'package.json').toString())
   assert.equal(info.version, require('../package.json').version)
   assert.ok(asar.extractFile(archive, 'updates.cjs').toString().includes('autoInstallOnAppQuit = false'))
-  assert.equal(JSON.parse(asar.extractFile(archive, 'node_modules/electron-updater/package.json')).version, '6.8.12')
+  assert.equal(
+    JSON.parse(asar.extractFile(archive, path.join('node_modules', 'electron-updater', 'package.json'))).version,
+    '6.8.12',
+  )
   const feed = yaml.load(fs.readFileSync(path.join(resources, 'app-update.yml'), 'utf8'))
   assert.equal(feed.provider, 'github')
   assert.equal(feed.owner, 'rianagil-PUSKAPA')
