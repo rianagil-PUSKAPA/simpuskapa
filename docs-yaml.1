@@ -1,0 +1,1524 @@
+openapi: 3.0.0
+paths:
+  /v1/auth/refresh:
+    get:
+      operationId: UserController_refreshAuth
+      summary: refresh auth
+      parameters:
+        - name: refresh_token
+          required: true
+          in: query
+          example: xxx.xxx.xxx
+          schema: {}
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairJWTResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      tags:
+        - identity
+  /v1/users:
+    get:
+      operationId: UserController_getUsers
+      summary: get users list
+      parameters:
+        - name: per_page
+          required: false
+          in: query
+          example: 10
+          schema: {}
+        - name: page
+          required: false
+          in: query
+          example: 1
+          schema: {}
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - identity
+    post:
+      operationId: UserController_createUsers
+      summary: create new users
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - identity
+  /v1/users/{id}:
+    put:
+      operationId: UserController_updateUsers
+      summary: update user by id
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - identity
+    delete:
+      operationId: UserController_deleteUserById
+      summary: delete user by id
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - identity
+  /v1/users/{id}/password:
+    put:
+      operationId: UserController_updateUserpassword
+      summary: update user password by id
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserPassword'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - identity
+  /v1/auth/oauth/google/callback:
+    get:
+      operationId: UserController_oauthGoogleCallback
+      parameters: []
+      responses:
+        '200':
+          description: ''
+  /v1/auth/oauth/google:
+    get:
+      operationId: UserController_oauthGoogleInitiation
+      summary: oauth google
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - identity
+  /v1/acls/keys:
+    get:
+      operationId: AclTemplateController_getAclKeys
+      summary: access controll get access keys
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AclKeysResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - access-control
+  /v1/acls/template:
+    post:
+      operationId: AclTemplateController_createAclTemplate
+      summary: create acl template
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAclTemplateRequest'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - access-control
+    get:
+      operationId: AclTemplateController_getAclTemplate
+      summary: get acl templates
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AclTemplateResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - access-control
+  /v1/acls/template/{id}:
+    delete:
+      operationId: AclTemplateController_deleteAclTemplate
+      summary: get acl templates
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - access-control
+  /v1/employes:
+    post:
+      operationId: EmployeeController_createEmployee
+      summary: create new employee
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeDataRequest'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+    get:
+      operationId: EmployeeController_getAllEmployee
+      summary: get list employee all
+      parameters:
+        - name: per_page
+          required: false
+          in: query
+          example: 10
+          schema: {}
+        - name: page
+          required: false
+          in: query
+          example: 1
+          schema: {}
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeListDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/employes/{id}/cv-file:
+    put:
+      operationId: EmployeeController_uploadEmployeeCV
+      summary: upload cv employee
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/employes/{id}:
+    put:
+      operationId: EmployeeController_updateEmployee
+      summary: create new employee
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeDataRequest'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+    delete:
+      operationId: EmployeeController_deleteEmployee
+      summary: delete employee by id
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+    get:
+      operationId: EmployeeController_getEmployeeDetail
+      summary: get list employee all
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/employes/{id}/contracts:
+    get:
+      operationId: EmployeeController_getEmployeeContracts
+      summary: get list employee contracts
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeContractListDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/employes/{id}/trainings:
+    post:
+      operationId: EmployeeController_addEmployeeTraining
+      summary: Add employee training
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                training_name:
+                  type: string
+                  example: Google Cloud
+                training_date:
+                  type: string
+                  example: '2023-03-26T04:03:04.733Z'
+                organizer:
+                  type: string
+                  example: Google
+                source_fund:
+                  type: string
+                  example: Company
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+    get:
+      operationId: EmployeeController_getEmployeeTrainings
+      summary: get list employee trainings
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeTrainingListDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/files/trainings/{file_name}:
+    get:
+      operationId: EmployeeController_downloadEmployeeTrainingFile
+      summary: Download employee training files
+      parameters:
+        - name: file_name
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee
+  /v1/employes/{id}/performance:
+    post:
+      operationId: EmployeePerformanceController_createEmployeePerformanceCV
+      summary: create employee performance
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                year:
+                  type: string
+                  example: '2024'
+                doc_type:
+                  type: string
+                  example: end-year
+                  enum:
+                    - end-year
+                    - planning
+                    - mid-year
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee_performance
+    get:
+      operationId: EmployeePerformanceController_getEmployeePerformanceAll
+      summary: delete employee performance
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePerformanceListDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee_performance
+  /v1/employes/{id}/performance/{performance_id}:
+    put:
+      operationId: EmployeePerformanceController_updateEmployeePerformanceCV
+      summary: create employee performance
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: performance_id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                year:
+                  type: string
+                  example: '2024'
+                doc_type:
+                  type: string
+                  example: end-year
+                  enum:
+                    - end-year
+                    - planning
+                    - mid-year
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee_performance
+    delete:
+      operationId: EmployeePerformanceController_deleteEmployeePerformance
+      summary: delete employee performance
+      parameters:
+        - name: performance_id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee_performance
+    get:
+      operationId: EmployeePerformanceController_getEmployeePerformanceDetail
+      summary: delete employee performance
+      parameters:
+        - name: performance_id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePerformanceDataResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpBaseResponse'
+      security:
+        - bearer: []
+      tags:
+        - employee_performance
+info:
+  title: SIMPUSKAPA API
+  description: SIMPUSKAPA API description
+  version: '1.0'
+  contact: {}
+tags:
+  - name: identity
+    description: ''
+  - name: employee
+    description: ''
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - id
+        - email
+        - password
+    PairJWT:
+      type: object
+      properties:
+        auth_token:
+          type: string
+        refresh_token:
+          type: string
+      required:
+        - auth_token
+        - refresh_token
+    PairJWTResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PairJWT'
+      required:
+        - message
+        - data
+    HttpBaseResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+      required:
+        - message
+        - data
+    UserListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+      required:
+        - message
+        - data
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        acl:
+          type: array
+          items:
+            type: string
+      required:
+        - email
+        - password
+        - acl
+    CreateUserResponseDetail:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        acl:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+      required:
+        - email
+        - password
+        - acl
+        - id
+    CreateUserResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/CreateUserResponseDetail'
+      required:
+        - message
+        - data
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        acl:
+          type: array
+          items:
+            type: string
+      required:
+        - email
+        - acl
+    UpdateUserPassword:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+    AclKeysResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+        - data
+    CreateAclTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        acl:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - acl
+    AclTemplate:
+      type: object
+      properties:
+        role_name:
+          type: string
+        acl:
+          type: array
+          items:
+            type: string
+      required:
+        - role_name
+        - acl
+    AclTemplateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AclTemplate'
+      required:
+        - message
+        - data
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+        staff_id:
+          type: string
+        user_id:
+          type: string
+        gender:
+          type: string
+          enum: &ref_0
+            - male
+            - female
+        full_name:
+          type: string
+        pob:
+          type: string
+        dob:
+          type: object
+        religion:
+          type: string
+        marital_status:
+          type: string
+          enum: &ref_1
+            - maried
+            - not_maried
+        nationality:
+          type: string
+        id_card_address:
+          type: string
+        residence_address:
+          type: string
+        phone_number:
+          type: string
+        identity_number:
+          type: string
+        npwp_number:
+          type: string
+        bpjs_number:
+          type: string
+        bpjs_tkn_number:
+          type: string
+        kk_number:
+          type: string
+        insurance_number:
+          type: string
+        emergency_contact:
+          type: string
+        bank_name:
+          type: string
+        bank_branch:
+          type: string
+        bank_acc_number:
+          type: string
+        bank_acc_name:
+          type: string
+        cv_path:
+          type: string
+        identity_path:
+          type: string
+        passport_path:
+          type: string
+        mpwp_path:
+          type: string
+        bpjs_path:
+          type: string
+        bpjs_emp_path:
+          type: string
+        kk_path:
+          type: string
+        insurance_path:
+          type: string
+        emergency_path:
+          type: string
+        bank_path:
+          type: string
+        pass_photo_path:
+          type: string
+        created_at:
+          type: object
+        updated_at:
+          type: object
+        deleted_at:
+          type: object
+      required:
+        - id
+        - staff_id
+        - user_id
+        - gender
+        - full_name
+        - pob
+        - dob
+        - religion
+        - marital_status
+        - nationality
+        - id_card_address
+        - residence_address
+        - phone_number
+        - identity_number
+        - npwp_number
+        - bpjs_number
+        - bpjs_tkn_number
+        - kk_number
+        - insurance_number
+        - emergency_contact
+        - bank_name
+        - bank_branch
+        - bank_acc_number
+        - bank_acc_name
+        - cv_path
+        - identity_path
+        - passport_path
+        - mpwp_path
+        - bpjs_path
+        - bpjs_emp_path
+        - kk_path
+        - insurance_path
+        - emergency_path
+        - bank_path
+        - pass_photo_path
+        - created_at
+        - updated_at
+        - deleted_at
+    EmployeeDataRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        staff_id:
+          type: string
+        user_id:
+          type: string
+        gender:
+          type: string
+          enum: *ref_0
+        full_name:
+          type: string
+        pob:
+          type: string
+        dob:
+          type: object
+        religion:
+          type: string
+        marital_status:
+          type: string
+          enum: *ref_1
+        nationality:
+          type: string
+        id_card_address:
+          type: string
+        residence_address:
+          type: string
+        phone_number:
+          type: string
+        identity_number:
+          type: string
+        npwp_number:
+          type: string
+        bpjs_number:
+          type: string
+        bpjs_tkn_number:
+          type: string
+        kk_number:
+          type: string
+        insurance_number:
+          type: string
+        emergency_contact:
+          type: string
+        bank_name:
+          type: string
+        bank_branch:
+          type: string
+        bank_acc_number:
+          type: string
+        bank_acc_name:
+          type: string
+        cv_path:
+          type: string
+        identity_path:
+          type: string
+        passport_path:
+          type: string
+        mpwp_path:
+          type: string
+        bpjs_path:
+          type: string
+        bpjs_emp_path:
+          type: string
+        kk_path:
+          type: string
+        insurance_path:
+          type: string
+        emergency_path:
+          type: string
+        bank_path:
+          type: string
+        pass_photo_path:
+          type: string
+        created_at:
+          type: object
+        updated_at:
+          type: object
+        deleted_at:
+          type: object
+      required:
+        - id
+        - staff_id
+        - user_id
+        - gender
+        - full_name
+        - pob
+        - dob
+        - religion
+        - marital_status
+        - nationality
+        - id_card_address
+        - residence_address
+        - phone_number
+        - identity_number
+        - npwp_number
+        - bpjs_number
+        - bpjs_tkn_number
+        - kk_number
+        - insurance_number
+        - emergency_contact
+        - bank_name
+        - bank_branch
+        - bank_acc_number
+        - bank_acc_name
+        - cv_path
+        - identity_path
+        - passport_path
+        - mpwp_path
+        - bpjs_path
+        - bpjs_emp_path
+        - kk_path
+        - insurance_path
+        - emergency_path
+        - bank_path
+        - pass_photo_path
+        - created_at
+        - updated_at
+        - deleted_at
+    EmployeeListDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Employee'
+      required:
+        - message
+        - data
+    EmployeeDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Employee'
+      required:
+        - message
+        - data
+    EmployeeContract:
+      type: object
+      properties:
+        id:
+          type: string
+        employee_id:
+          type: string
+        contract_name:
+          type: string
+        position:
+          type: string
+        contract_started:
+          format: date-time
+          type: string
+        contract_ended:
+          format: date-time
+          type: string
+        doc_path:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        deleted_at:
+          format: date-time
+          type: string
+      required:
+        - id
+        - employee_id
+        - contract_name
+        - position
+        - contract_started
+        - contract_ended
+        - doc_path
+        - created_at
+        - updated_at
+        - deleted_at
+    EmployeeContractListDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeContract'
+      required:
+        - message
+        - data
+    EmployeeTraining:
+      type: object
+      properties:
+        id:
+          type: string
+        employee_id:
+          type: string
+        training_name:
+          type: string
+        training_date:
+          type: object
+        organizer:
+          type: string
+        source_fund:
+          type: string
+        certificate_path:
+          type: string
+      required:
+        - id
+        - employee_id
+        - training_name
+        - training_date
+        - organizer
+        - source_fund
+        - certificate_path
+    EmployeeTrainingListDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeTraining'
+      required:
+        - message
+        - data
+    EmployeePerformance:
+      type: object
+      properties:
+        id:
+          type: string
+        employee_id:
+          type: string
+        year:
+          type: number
+        doc_path:
+          type: string
+        doc_type:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        deleted_at:
+          format: date-time
+          type: string
+      required:
+        - id
+        - employee_id
+        - year
+        - doc_path
+        - doc_type
+        - created_at
+        - updated_at
+        - deleted_at
+    EmployeePerformanceDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/EmployeePerformance'
+      required:
+        - message
+        - data
+    EmployeePerformanceListDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeePerformance'
+      required:
+        - message
+        - data

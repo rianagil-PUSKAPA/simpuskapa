@@ -1,0 +1,541 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model users {
+  id         String     @id @default(uuid()) @db.VarChar(55)
+  email      String     @unique @db.VarChar(100)
+  password   String     @db.Text
+  acl        Json?
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now()) @updatedAt
+  avatar     String?    @db.Text
+  deleted_at DateTime?
+  employee   employee[]
+  role       Json?
+  status     Boolean?
+}
+
+model acl_templates {
+  id        String @id @default(uuid()) @db.VarChar(55)
+  role_name String @unique @db.VarChar(100)
+  acl       Json?
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum MaritalStatus {
+  maried
+  not_maried
+  married
+  single
+}
+
+enum DocType {
+  planning
+  mid_year
+  end_year
+}
+
+model employee {
+  id                      String               @id @default(uuid()) @db.VarChar(55)
+  staff_id                String?              @db.VarChar(55)
+  user                    users                @relation(fields: [user_id], references: [id])
+  user_id                 String               @db.VarChar(55)
+  gender                  Gender?
+  full_name               String               @db.VarChar(255)
+  pob                     String?              @db.VarChar(255)
+  dob                     DateTime?
+  religion                String?              @db.VarChar(255)
+  marital_status          MaritalStatus?
+  nationality             String?              @db.VarChar(255)
+  id_card_address         String?              @db.Text
+  residence_address       String?              @db.Text
+  phone_number            String?              @db.VarChar(55)
+  identity_number         String?              @db.VarChar(55)
+  npwp_number             String?              @db.VarChar(255)
+  bpjs_number             String?              @db.VarChar(255)
+  bpjs_tkn_number         String?              @db.VarChar(255)
+  kk_number               String?              @db.VarChar(255)
+  passport_number         String?              @db.VarChar(255)
+  passport_expiry         DateTime?
+  insurance_number        String?              @db.VarChar(255)
+  emergency_contacts      String?              @db.Text
+  bank_name               String?              @db.VarChar(255)
+  bank_branch             String?              @db.VarChar(255)
+  bank_acc_number         String?              @db.VarChar(255)
+  bank_acc_name           String?              @db.VarChar(255)
+  swift_code              String?              @db.VarChar(255)
+  cv_path                 Json?
+  cv_title                String?              @db.VarChar(255)
+  identity_path           Json?
+  passport_path           Json?
+  npwp_path               Json?
+  bpjs_path               Json?
+  bpjs_emp_path           Json?
+  kk_path                 Json?
+  insurance_path          Json?
+  emergency_path          Json?
+  bank_path               Json?
+  pass_photo_path         Json?
+  status                  String?              @db.VarChar(50)
+  created_at              DateTime             @default(now())
+  updated_at              DateTime             @default(now()) @updatedAt
+  deleted_at              DateTime?
+  performances            performances[]
+  employee_contracts      employee_contracts[]
+  trainings               trainings[]
+  time_off_request        time_off_request[]
+  programs_progam_manager programs[]
+
+  form_progress               Int?
+  form_state                  String?  @db.Text
+  is_lock                     Boolean? @default(false)
+  health_insurance_number     String?  @db.VarChar(255)
+  health_insurance_path       Json?
+  recruitment_documents_title String?  @db.VarChar(255)
+  recruitment_documents_path  Json?
+  perdiem_tax_percentage      Float?
+  annual_quota                Int?     @default(0)
+}
+
+model performances {
+  id          String    @id @default(uuid()) @db.VarChar(55)
+  employee    employee  @relation(fields: [employee_id], references: [id])
+  employee_id String    @db.VarChar(55)
+  year        Int
+  doc_path    Json?
+  doc_type    DocType
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
+  deleted_at  DateTime?
+
+  @@unique(fields: [id, employee_id], name: "where_performance_employee")
+}
+
+model employee_contracts {
+  id               String    @id @default(uuid()) @db.VarChar(55)
+  contract_number  String?   @db.VarChar(55)
+  employee         employee  @relation(fields: [employee_id], references: [id])
+  employee_id      String    @db.VarChar(55)
+  supervisor_id    String?   @db.VarChar(55)
+  contract_name    String?   @db.VarChar(255)
+  position         String?   @db.VarChar(255)
+  contract_started DateTime?
+  contract_ended   DateTime?
+  department       String?   @db.VarChar(255)
+  emp_status       String?   @db.VarChar(255)
+  doc_path         Json?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @default(now()) @updatedAt
+  deleted_at       DateTime?
+}
+
+model trainings {
+  id               String    @id @default(uuid()) @db.VarChar(55)
+  employee         employee  @relation(fields: [employee_id], references: [id])
+  employee_id      String    @db.VarChar(55)
+  training_name    String    @db.VarChar(255)
+  training_date    DateTime?
+  organizer        String    @db.VarChar(255)
+  source_fund      String    @db.VarChar(255)
+  certificate_path Json?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @default(now()) @updatedAt
+  deleted_at       DateTime?
+}
+
+enum TimeOffQuotaStatus {
+  active
+  expired
+}
+
+enum LeaveType {
+  annual
+  sick_certified
+  sick_uncertified
+  special
+  compensatory
+  maternity
+  paternity
+  work_remotely
+  isolation
+  caregiving
+  fine
+  joint_holiday
+}
+
+enum TimeOffRequestStatus {
+  requested
+  approved
+  declined
+  cancelled
+  rejected
+}
+
+model time_off_request {
+  id              String                @id @default(uuid()) @db.VarChar(55)
+  employee        employee              @relation(fields: [employee_id], references: [id])
+  employee_id     String                @db.VarChar(55)
+  leave_type      LeaveType?
+  start_date      DateTime?
+  end_date        DateTime?
+  duration        Int?
+  notes           String?               @db.Text
+  doc_path        Json?
+  status          TimeOffRequestStatus?
+  created_at      DateTime              @default(now())
+  updated_at      DateTime              @default(now()) @updatedAt
+  deleted_at      DateTime?
+  approved_at     DateTime?
+  pic_employee_id String?               @db.VarChar(55)
+  quota_debt      Int?                  @default(0)
+  resetted_at     DateTime?
+}
+
+model vendor_packages {
+  id        String @id @default(uuid()) @db.VarChar(55)
+  vendor    vendor @relation(fields: [vendor_id], references: [id])
+  vendor_id String
+  name      String @db.VarChar(100)
+  price     Float  @db.Float
+  unit      String
+  currency  String
+}
+
+model vendor_type {
+  id                          String                        @id @default(uuid()) @db.VarChar(55)
+  name                        String                        @db.VarChar(100)
+  vendor_category_information vendor_category_information[]
+  tax_calculation_type        String?
+}
+
+model vendor_category_information {
+  id                  String              @id @default(uuid()) @db.VarChar(55)
+  name                String              @db.VarChar(100)
+  action_by           String              @db.VarChar(100)
+  vendor_categories   vendor_categories[]
+  vendor_type         vendor_type         @relation(fields: [vendor_type_id], references: [id])
+  vendor_type_id      String
+  budgets             budgets[]
+  attachment_list     Json?
+  npwp_tax_percentage Int?
+  tax_percentage      Float?
+  ppn_percentage      Float?
+}
+
+model vendor_categories {
+  id                      String                      @id @default(uuid()) @db.VarChar(55)
+  vendor                  vendor                      @relation(fields: [vendor_id], references: [id])
+  vendor_id               String
+  vendor_category_info    vendor_category_information @relation(fields: [vendor_category_info_id], references: [id])
+  vendor_category_info_id String
+}
+
+model vendor {
+  id                 String              @id @default(uuid()) @db.VarChar(55)
+  vendor_payment     Json?
+  vendor_information Json?
+  vendor_packages    vendor_packages[]
+  form_state         String?             @db.Text
+  form_progress      Int?
+  vendor_type        String?
+  vendor_categories  vendor_categories[]
+  created_by         String?
+  created_at         DateTime?
+  deleted_at         DateTime?
+  payment_request    payment_request[]
+}
+
+model partners {
+  id       String     @id @default(uuid()) @db.VarChar(55)
+  name     String     @unique() @db.VarChar(100)
+  code     String     @unique @db.VarChar(55)
+  programs programs[]
+}
+
+enum ProgramApproval {
+  success
+  pending
+  rejected
+  deafted
+  revision
+  cancelled
+}
+
+model perdiem_settings {
+  id                                   String   @id @default(uuid()) @db.VarChar(55)
+  base_value                           BigInt?
+  base_value_normal                    BigInt?
+  base_value_remote_area               BigInt?
+  base_value_overseas                  BigInt?
+  travel_perdiem                       BigInt?
+  activity_perdiem                     BigInt?
+  note                                 String?  @db.Text
+  travel_expense_percentages_breakfast BigInt?
+  travel_expense_percentages_lunch     BigInt?
+  travel_expense_percentages_dinner    BigInt?
+  travel_expense_non_overnight         BigInt?
+  travel_expense_travel_days           BigInt?
+  program_id                           String   @db.VarChar(55)
+  program                              programs @relation(fields: [program_id], references: [id])
+}
+
+model programs {
+  id                           String             @id @default(uuid()) @db.VarChar(55)
+  code                         String             @unique @db.VarChar(20)
+  partner_code                 String             @db.VarChar(20)
+  partner                      partners           @relation(fields: [partner_code], references: [code])
+  program_name                 String             @db.VarChar(100)
+  program_description          String?            @db.Text
+  currency                     String             @db.VarChar(10)
+  estimated_budget             Int
+  grant_manager                String?            @db.VarChar(55)
+  program_manager              String             @db.VarChar(55)
+  program_officer              String?            @db.VarChar(55)
+  budget_controller            String?            @db.VarChar(55)
+  timeline                     Json?
+  contract                     Json?
+  finance_progress             Int?
+  approval                     ProgramApproval?
+  approval_note                String?            @db.Text
+  submitted_at                 DateTime?
+  submitted_by                 String?            @db.VarChar(55)
+  approved_at                  DateTime?
+  projects                     projects[]
+  revisions_path               Json?
+  revise_approval_doc_path     Json?
+  budget_revision_note         String?
+  budget_revision_requested_at DateTime?
+  budget_revision_status       String?   @db.VarChar(20)
+  budget_revision_requested_by String?   @db.VarChar(55)
+  budget_revision_decided_by   String?   @db.VarChar(55)
+  budget_revision_decided_at   DateTime?
+  budget_revision_rejection_note String?  @db.Text
+  requisition_form             requisition_form[]
+  program_manager_rel          employee           @relation(fields: [program_manager], references: [id])
+
+  form_progress          Int?
+  form_state             String?            @db.Text
+  created_by             String?
+  created_at             DateTime?
+  program_ownership_type String?
+  calc_finance_progress  BigInt?
+  revise_amount          BigInt?
+  calc_total_budget      BigInt?
+  calc_total_expense     BigInt?
+  perdiem_settings       perdiem_settings[]
+}
+
+model projects {
+  id String @id @default(uuid()) @db.VarChar(55)
+
+  programs   programs @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  program_id String   @db.VarChar(55)
+
+  ordering_seq     Int
+  code             String             @db.VarChar(10)
+  description      String             @db.Text
+  activities       activities[]
+  requisition_form requisition_form[]
+}
+
+model activities {
+  id                 String    @id @default(uuid()) @db.VarChar(55)
+  projects           projects  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_id         String    @db.VarChar(55)
+  ordering_seq       Int
+  code               String    @db.VarChar(10)
+  description        String    @db.Text
+  notes              String    @db.Text
+  timeline           Json?
+  proposed_milestone String    @db.VarChar(200)
+  due_date           DateTime?
+  budgets            budgets[]
+}
+
+model budgets {
+  id           String     @id @default(uuid()) @db.VarChar(55)
+  activities   activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  activity_id  String     @db.VarChar(55)
+  ordering_seq Int
+  code         String     @db.VarChar(100)
+  description  String     @db.VarChar(100)
+
+  vendor_category_info    vendor_category_information @relation(fields: [vendor_category_info_id], references: [id])
+  vendor_category_info_id String
+
+  qty      Float? @db.Double 
+  unit     String @db.VarChar(100)
+  pkg_qty  Decimal? @db.Decimal(10, 2)
+  pkg_unit String
+  cost     Int
+  retur    Int?
+}
+
+model requisition_form {
+  id                                   String            @id @default(uuid()) @db.VarChar(55)
+  programs                             programs          @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  program_id                           String            @db.VarChar(55)
+  staff_id                             String?           @db.VarChar(55)
+  deadline                             DateTime?
+  action_by                            String            @db.VarChar(55)
+  action_at                            DateTime?
+  about_request                        String            @db.Text()
+  personal_hire_information            Json?
+  travel_detail                        Json?
+  requested_at                         DateTime?
+  requested_by                         String            @db.VarChar(55)
+  request_number                       String            @db.VarChar(200)
+  request_number_seq                   Int
+  program_projects_related             projects          @relation(fields: [program_project_related_id], references: [id], onDelete: Cascade)
+  program_project_related_id           String            @db.VarChar(55)
+  program_manager_approval_status      String?           @db.VarChar(55)
+  program_manager_approval_status_at   DateTime?
+  budget_controller_approval_status    String?           @db.VarChar(55)
+  budget_controller_approval_status_at DateTime?
+  budget_controller_approval_by        String?
+  action_by_notified_status            Boolean?
+  rejection_note                       String?
+  rf_budgets                           Json?
+  rf_type                              String            @db.VarChar(55)
+  payment_request                      payment_request[]
+  closed_at                            DateTime?
+  closed_by                            String?           @db.VarChar(55)
+  has_retur                            Boolean?
+}
+
+model tax_tier {
+  id String @id @default(uuid()) @db.VarChar(55)
+
+  tier         Int
+  min_cap      Int
+  max_cap      Int
+  tax_npwp     Float
+  tax_non_npwp Float
+}
+
+model payment_request {
+  id                                String           @id @default(uuid()) @db.VarChar(55)
+  rf_id                             String           @db.VarChar(55)
+  requisition_form                  requisition_form @relation(fields: [rf_id], references: [id], onDelete: Cascade)
+  vendor_id                         String?          @db.VarChar(55)
+  vendor                            vendor?          @relation(fields: [vendor_id], references: [id], onDelete: Cascade)
+  payment_type                      String?
+  expected_payment_date             DateTime?
+  payment_date                      DateTime?
+  with_ppn                          Boolean?
+  requested_by                      String?          @db.VarChar(55)
+  requested_at                      DateTime?
+  pr_budgets                        Json?
+  budget_controller_approval        String?
+  head_of_finance_approval          String?
+  budget_controller_approval_by     String?
+  budget_controller_approval_at     DateTime?
+  head_of_finance_approval_by       String?
+  attachments                       Json?
+  processed_by                      String?          @db.VarChar(55)
+  processed_at                      DateTime?
+  request_number                    String           @db.VarChar(200)
+  request_number_seq                Int
+  paid_at                           DateTime?
+  created_at                        DateTime         @default(now())
+  tax                               Json?
+  program_manager_approval          String?          @db.VarChar(55)
+  program_manager_approval_by       String?          @db.VarChar(55)
+  program_manager_approval_at       DateTime?
+  spending_deadline                 DateTime?
+  report_documents                  Json?
+  aps_budget_controller_approval    String?
+  aps_budget_controller_approval_by String?
+  aps_haed_of_finance_approval      String?
+  aps_haed_of_finance_approval_by   String?
+  aps_processed_by                  String?
+  aps_result                        String?
+  aps_related_apr_id                String?          @db.VarChar(55)
+  travel_end_date_estimation        DateTime?
+  finance_checking_process_by       String?
+  finance_checking_process_at       DateTime?
+  finance_checking_process_status   String?
+  finance_checking_process_notes    String?
+  rejection_note                    String?
+  description                       String?
+}
+
+model finance_logs {
+  id         String @id @default(uuid()) @db.VarChar(55)
+  log_type   String
+  rf_id      String @db.VarChar(55)
+  program_id String @db.VarChar(55)
+  pr_id      String @db.VarChar(55)
+
+  user_id String @db.VarChar(55)
+
+  raw_data String @db.Text()
+
+  message String  @db.Text()
+  body    String? @db.Text()
+
+  created_at DateTime @default(now())
+}
+
+model notifications {
+  id          String    @id @default(uuid()) @db.VarChar(55)
+  notif_type  String
+  ref_id      String    @db.VarChar(55)
+  employee_id String    @db.VarChar(55)
+  created_at  DateTime  @default(now())
+  deleted_at  DateTime? @default(now())
+}
+
+model fund_received_history {
+  id           String    @id @default(uuid()) @db.VarChar(55)
+  program_id   String    @db.VarChar(55)
+  amount       BigInt?
+  submitted_by String?   @db.VarChar(55)
+  documents    Json?
+  source       String?   @db.VarChar(55)
+  notes        String?   @db.Text
+  created_at   DateTime  @default(now())
+  deleted_at   DateTime? @default(now())
+}
+
+model annual_timeoff_reset_history {
+  id         String    @id @default(uuid()) @db.VarChar(55)
+  year       Int?
+  reset_date DateTime?
+  captured   Json?
+  reseted_by String    @db.VarChar(55)
+}
+// After Activity Report: draft and submitted reports, separate from project finance approval.
+model aar_reports {
+  id              String    @id @default(uuid()) @db.VarChar(55)
+  created_by      String    @db.VarChar(55)
+  activity_code   String?   @db.VarChar(100)
+  activity_name   String?   @db.VarChar(255)
+  organizer       String?   @db.VarChar(255)
+  author          String?   @db.VarChar(255)
+  category        String?   @db.VarChar(255)
+  start_date      DateTime?
+  answers         Json
+  attachments     Json?
+  progress        Int       @default(0)
+  status          String    @default("draft") @db.VarChar(20)
+  email_status    String    @default("not_sent") @db.VarChar(20)
+  email_error     String?   @db.Text
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  submitted_at    DateTime?
+
+  @@index([created_by, status])
+  @@index([created_at])
+}
+

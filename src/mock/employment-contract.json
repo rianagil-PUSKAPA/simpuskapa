@@ -1,0 +1,71 @@
+{
+  "message": "success",
+  "data": [
+    {
+      "id": "1",
+      "position": "Lead Growth",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-6.png",
+        "name": "Ananda Dewi"
+      },
+      "empStatus": "Full Time",
+      "joinedDate": "2023-02-08T14:17:51.534Z"
+    },
+    {
+      "id": "2",
+      "position": "Business Analyst Manager",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-7.png",
+        "name": "Dian Puspita"
+      },
+      "empStatus": "Full Time",
+      "joinedDate": "2022-09-08T14:17:51.534Z"
+    },
+    {
+      "id": "3",
+      "position": "Business Analyst",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-8.png",
+        "name": "Citra Kartika"
+      },
+      "empStatus": "Full Time",
+      "joinedDate": "2023-01-08T14:17:51.534Z"
+    },
+    {
+      "id": "4",
+      "position": "Business Analyst",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-5.png",
+        "name": "Ananda Dewi"
+      },
+      "empStatus": "Full Time",
+      "joinedDate": "2022-06-08T14:17:51.534Z"
+    },
+    {
+      "id": "5",
+      "position": "Business Analyst",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-4.png",
+        "name": "Ananda Dewi"
+      },
+      "empStatus": "Part Time",
+      "joinedDate": "2021-08-08T14:17:51.534Z"
+    },
+    {
+      "id": "6",
+      "position": "Lead Growth",
+      "department": "Business",
+      "supervisor": {
+        "image": "/images/avatar/avatar-2.png",
+        "name": "Ananda Dewi"
+      },
+      "empStatus": "Intership",
+      "joinedDate": "2022-12-08T14:17:51.534Z"
+    }
+  ]
+}
