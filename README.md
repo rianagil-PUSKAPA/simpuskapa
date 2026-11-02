@@ -265,3 +265,76 @@ A comprehensive analysis of the codebase identified the following areas for impr
 | 4   | Modal accessibility gaps      | `src/components/Modal.tsx` | Missing `aria-labelledby` on Dialog.Panel; close button lacks keyboard support.             |
 | 5   | Bundle analyzer disabled      | `next.config.js`           | Bundle analysis commented out. Enable periodically to track bundle size.                    |
 | 6   | No `.nvmrc`                   | project root               | No Node.js version pinned for contributors. Add `.nvmrc` with target version.               |
+
+### KONTEKS PENTING — REPOSITORY GITHUB & SNAPSHOT SIM PUSKAPA
+
+Saya mengelola aplikasi SIM PUSKAPA yang berjalan di AWS EC2. Saat ini terdapat dua repository GitHub dengan fungsi yang berbeda.
+
+### 1. Repository Development Utama
+
+- Repository: `simpuskapa-01/simpuskapa`
+- Fungsi: Repository utama untuk development, update source, perbaikan bug, dan pengembangan aplikasi.
+- Lokasi source aplikasi yang aktif di EC2: `/home/ec2-user/simpuskapa`
+- Semua proses edit source, `pnpm build`, testing, dan restart PM2 dilakukan di folder aplikasi ini.
+- **Jangan mengubah atau mereset source aplikasi tanpa instruksi saya.**
+
+**Penting:** Remote `origin` pada folder EC2 asli sebelumnya pernah terdeteksi mengarah ke repository PUSKAPA, bukan development. Selalu periksa `git remote -v` sebelum memberikan perintah Git. Jangan berasumsi `origin` adalah repository development.
+
+Jika saya meminta mengambil perubahan dari GitHub development, ambil dari `simpuskapa-01/simpuskapa` dan hanya ubah file yang saya minta. Jangan melakukan pull seluruh repository jika saya hanya meminta satu file.
+
+### 2. Repository PUSKAPA — Backup & Snapshot
+
+- Repository: `rianagil-PUSKAPA/simpuskapa`
+- Repository URL: `https://github.com/rianagil-PUSKAPA/simpuskapa.git`
+- Branch `trunk`: berisi pengembangan GitHub PUSKAPA, termasuk aplikasi SIM PUSKAPA Desktop.
+- Branch `ec2-source-snapshot`: khusus rolling snapshot source EC2.
+- Folder repository snapshot lokal: `/home/ec2-user/simpuskapa-puskapa-migration`
+- Script snapshot: `/home/ec2-user/snapshot-puskapa.sh`
+
+**ATURAN WAJIB:**
+
+1. Jangan pernah force-push snapshot EC2 ke branch `trunk` PUSKAPA.
+2. Jangan pernah menghapus atau menimpa pengembangan Desktop pada branch `trunk`.
+3. Semua snapshot EC2 hanya dikirim ke branch `ec2-source-snapshot`.
+4. Jangan mengubah Git remote, branch, source, maupun konfigurasi deployment di `/home/ec2-user/simpuskapa` saat melakukan snapshot.
+5. Jangan menyertakan `.env`, credentials, private keys, authenticated session files, `node_modules`, `.next`, backup sementara, dan file sensitif lainnya.
+6. Tetap sertakan source penting seperti `prisma/schema.prisma` dan migration SQL Prisma.
+7. Snapshot menggunakan sistem rolling snapshot: snapshot terbaru menggantikan snapshot sebelumnya pada branch khusus tersebut.
+8. Gunakan `--force-with-lease` dengan SHA remote yang sudah diverifikasi. Jangan menggunakan force-push tanpa pemeriksaan.
+9. Jika push snapshot gagal, periksa penyebab dan usahakan mengirim commit snapshot lokal yang sudah ada, bukan membuat snapshot baru berulang kali.
+10. Jangan membuat workflow snapshot yang otomatis memicu deployment aplikasi.
+
+### 3. Cara Menjalankan Snapshot
+
+Setelah selesai mengedit source, berhasil menjalankan build, dan memastikan aplikasi berfungsi normal, cukup jalankan:
+
+```bash
+/home/ec2-user/snapshot-puskapa.sh
+```
+
+Perintah tersebut bisa dijalankan dari direktori mana saja.
+
+Alur yang benar:
+
+**EC2 source → folder snapshot lokal → GitHub PUSKAPA branch `ec2-source-snapshot`.**
+
+Bukan ke `trunk`, bukan ke repository development.
+
+### 4. Jika Saya Meminta Update dari Development
+
+- Sumber: `simpuskapa-01/simpuskapa`.
+- Target: `/home/ec2-user/simpuskapa`.
+- Periksa perubahan lokal terlebih dahulu.
+- Gunakan pendekatan aman seperti `git fetch` dan mengambil file tertentu, jika saya hanya meminta perubahan file tertentu.
+- Jangan mengubah file lainnya atau menghapus perubahan lokal tanpa izin.
+
+### 5. Tujuan Konfigurasi
+
+Saya ingin dua repository tetap aman:
+
+- **Development utama:** untuk aktivitas pengembangan SIM PUSKAPA.
+- **PUSKAPA:** untuk menyimpan pengembangan Desktop di `trunk` dan menyediakan backup source EC2 terbaru di `ec2-source-snapshot`.
+
+Ketika saya meminta perbaikan atau menjalankan snapshot, selalu pertahankan pemisahan ini. Jangan mengubah arsitektur Git, remote, konfigurasi deployment, atau branch tanpa persetujuan saya.
+
+**Prioritas utama: source production EC2 aman, development aman, pengembangan Desktop aman, dan snapshot berjalan tanpa error.**
