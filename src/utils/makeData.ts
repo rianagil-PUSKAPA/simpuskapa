@@ -1,0 +1,47 @@
+import { faker } from '@faker-js/faker'
+
+export type Person = {
+  firstName: string
+  lastName: string
+  age: number
+  visits: number
+  progress: number
+  status: 'relationship' | 'complicated' | 'single'
+  subRows?: Person[]
+}
+
+const range = (len: number) => {
+  const arr = []
+  for (let i = 0; i < len; i++) {
+    arr.push(i)
+  }
+  return arr
+}
+
+const newPerson = (): Person => {
+  return {
+    firstName: faker.name.firstName(),
+    lastName: faker.name.lastName(),
+    age: faker.datatype.number(40),
+    visits: faker.datatype.number(1000),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    status: faker.helpers.shuffle<Person['status']>(['relationship', 'complicated', 'single'])[0]!,
+    progress: faker.datatype.number(100),
+  }
+}
+
+export function makeData(...lens: number[]) {
+  const makeDataLevel = (depth = 0): Person[] => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const len = lens[depth]!
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return range(len).map((d): Person => {
+      return {
+        ...newPerson(),
+        subRows: lens[depth + 1] ? makeDataLevel(depth + 1) : undefined,
+      }
+    })
+  }
+
+  return makeDataLevel()
+}

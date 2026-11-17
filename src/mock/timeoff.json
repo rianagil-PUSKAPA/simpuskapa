@@ -1,0 +1,45 @@
+{
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "type": "Remote Work",
+      "startDate": "2023-05-02T23:35:57.485Z",
+      "endDate": "2023-05-05T23:35:57.485Z",
+      "totalDays": 1,
+      "status": "Requested"
+    },
+    {
+      "id": 2,
+      "type": "Annuals Leaves",
+      "startDate": "2023-02-02T23:35:57.485Z",
+      "endDate": "2023-03-05T23:35:57.485Z",
+      "totalDays": 2,
+      "status": "Approved"
+    },
+    {
+      "id": 1,
+      "type": "Sick Leave (U)",
+      "startDate": "2023-01-12T23:35:57.485Z",
+      "endDate": "2023-02-19T23:35:57.485Z",
+      "totalDays": 0.5,
+      "status": "Approved"
+    },
+    {
+      "id": 1,
+      "type": "Annuals Leaves",
+      "startDate": "2023-04-16T23:35:57.485Z",
+      "endDate": "2023-05-29T23:35:57.485Z",
+      "totalDays": 4,
+      "status": "Declined"
+    },
+    {
+      "id": 1,
+      "type": "Annuals Leaves",
+      "startDate": "2023-03-02T23:35:57.485Z",
+      "endDate": "2023-05-05T23:35:57.485Z",
+      "totalDays": 4,
+      "status": "Declined"
+    }
+  ]
+}

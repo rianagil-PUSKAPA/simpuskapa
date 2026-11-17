@@ -1,0 +1,5 @@
+tailwind.config.js
+next.config.js
+postcss.config.js
+**/*.spec.ts
+node_modules

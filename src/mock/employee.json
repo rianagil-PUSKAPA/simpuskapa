@@ -1,0 +1,89 @@
+{
+  "message": "success",
+  "data": [
+    {
+      "id": "0213ec3a-9d34-4357-a182-f2a350761add",
+      "avatar": {
+        "image": "/images/avatar/avatar-1.png",
+        "name": "Khairani Ummah",
+        "email": "reni@puskapa.org"
+      },
+      "idNumber": 28211010,
+      "position": "Lead Growth",
+      "department": "Business",
+      "empStatus": "Full Time"
+    },
+    {
+      "id": "2",
+      "avatar": {
+        "image": "/images/avatar/avatar-2.png",
+        "name": "Nurizka Fitrianingrum",
+        "email": "nunu@puskapa.org"
+      },
+      "idNumber": 27118052,
+      "position": "Lead Design",
+      "department": "Product",
+      "empStatus": "Full Time"
+    },
+    {
+      "id": "3",
+      "avatar": {
+        "image": "/images/avatar/avatar-3.png",
+        "name": "Imam Firmansyah",
+        "email": "imam@puskapa.org"
+      },
+      "idNumber": 13509091,
+      "position": "Lead Tech",
+      "department": "Product",
+      "empStatus": "Full Time"
+    },
+    {
+      "id": "4",
+      "avatar": {
+        "image": "/images/avatar/avatar-4.png",
+        "name": "Dzaki Fadhlurrohman",
+        "email": "dzaki@puskapa.org"
+      },
+      "idNumber": 13516099,
+      "position": "Front End Developer",
+      "department": "Product",
+      "empStatus": "Part Time"
+    },
+    {
+      "id": "5",
+      "avatar": {
+        "image": "/images/avatar/avatar-5.png",
+        "name": "Alfiankan",
+        "email": "alfian@puskapa.org"
+      },
+      "idNumber": 13517099,
+      "position": "Back End Developer",
+      "department": "Product",
+      "empStatus": "Part Time"
+    },
+    {
+      "id": "6",
+      "avatar": {
+        "image": "",
+        "name": "Lintang Wulandari",
+        "email": "lintang@puskapa.org"
+      },
+      "idNumber": 28223010,
+      "position": "Social Media Specialist",
+      "department": "Business",
+      "empStatus": "Full Time"
+    },
+    {
+      "id": "7",
+      "avatar": {
+        "image": "",
+        "name": "Cute Potato",
+        "email": "cute.potatog@puskapa.org"
+      },
+      "idNumber": 22091836,
+      "position": "Marketing Analyst",
+      "department": "Business",
+      "empStatus": "Full Time"
+    }
+  ]
+}

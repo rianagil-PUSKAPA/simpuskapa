@@ -1,0 +1,81 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/users": {
+      "get": {
+        "operationId": "UserController_getUsers",
+        "summary": "get users list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/HttpBaseResponse" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/User" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HttpBaseResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HttpBaseResponse" }
+              }
+            }
+          }
+        },
+        "tags": ["identity"]
+      }
+    }
+  },
+  "info": {
+    "title": "SIMPUSKAPA API",
+    "description": "SIMPUSKAPA API description",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [{ "name": "identity", "description": "" }],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "name": { "type": "string" },
+          "password": { "type": "string" }
+        },
+        "required": ["id", "email", "name", "password"]
+      },
+      "HttpBaseResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "data": { "type": "object" }
+        },
+        "required": ["message", "data"]
+      }
+    }
+  }
+}
